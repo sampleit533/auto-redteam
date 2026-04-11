@@ -4,8 +4,6 @@ Academic prototype for red team automation in CI/CD. Runs non-destructive attack
 
 ## Scope
 
-This repository is intentionally limited to a university coursework scope.
-
 - Implemented end-to-end scenarios: `T1` and `T2`
 - Evaluation source of truth: simulation observables and expected mappings
 - Primary outputs: workflow artifacts, JSON results, HTML reports
@@ -22,8 +20,8 @@ This repository is intentionally limited to a university coursework scope.
 
 | ID | Name | MITRE TTP | Status |
 |----|------|-----------|--------|
-| T1 | SSH Brute-force | T1110.001 | ✅ implemented |
-| T2 | Privilege Escalation (IAM) | T1078.004 | ✅ implemented |
+| T1 | SSH Brute-force | T1110.001 | implemented |
+| T2 | Privilege Escalation (IAM) | T1078.004 | implemented |
 | T3 | Lateral Movement Pattern | T1021 | planned |
 | T4 | Data Access / Exfiltration Pattern | T1530 | planned |
 | T5 | Supply-chain / CI Compromise Pattern | T1195.001 | planned |
@@ -94,7 +92,3 @@ auto-redteam/
 ## Adding New Scenarios
 
 See [`docs/adding_scenarios.md`](docs/adding_scenarios.md) for a step-by-step guide.
-
-## License
-
-MIT
