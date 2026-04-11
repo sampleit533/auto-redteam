@@ -1,0 +1,62 @@
+version: "3.9"
+
+# Sandbox target workloads — all containers are internal only (no published ports to host)
+# Bring up: docker compose up -d
+# Tear down: docker compose down -v
+
+networks:
+  redteam-sandbox:
+    driver: bridge
+    internal: true   # No internet access
+
+services:
+
+  # T1 target — SSH server with test account
+  target-ssh:
+    image: lscr.io/linuxserver/openssh-server:latest
+    container_name: target-ssh
+    networks:
+      - redteam-sandbox
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - USER_NAME=redteam-test
+      - USER_PASSWORD=${REDTEAM_SSH_TEST_PASSWORD:-RedteamPass123!}
+      - PASSWORD_ACCESS=true
+      - SUDO_ACCESS=false
+    # Publish to localhost so the simulation runner (on the host) can connect
+    ports:
+      - "127.0.0.1:2222:2222"
+
+  # T2 target — LocalStack (mock AWS IAM + CloudTrail)
+  localstack:
+    image: localstack/localstack:3
+    container_name: localstack
+    networks:
+      - redteam-sandbox
+    environment:
+      - SERVICES=iam,sts,cloudtrail
+      - DEBUG=0
+      - PERSISTENCE=0
+    ports:
+      - "127.0.0.1:4566:4566"
+    volumes:
+      - localstack-data:/var/lib/localstack
+
+  # Filebeat — ships logs to Elasticsearch
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.13.0
+    container_name: filebeat
+    user: root
+    networks:
+      - redteam-sandbox
+    volumes:
+      - ../collection/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - target-ssh
+      - localstack
+
+volumes:
+  localstack-data:

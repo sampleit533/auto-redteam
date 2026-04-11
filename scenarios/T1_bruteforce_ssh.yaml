@@ -1,0 +1,44 @@
+id: t1_bruteforce_ssh
+version: "1.0"
+title: SSH Brute-force Simulation (safe)
+mitre_ttp: T1110.001
+mitre_name: "Brute Force: Password Guessing"
+description: >
+  Simulate a series of failed SSH authentication attempts (50 attempts)
+  followed by a single successful login using a pre-created test account.
+  Non-destructive: uses only the sandbox target SSH server. No real password
+  spraying against public endpoints.
+
+target:
+  service: ssh
+  host: "{{ TARGET_SSH_HOST | default('target-ssh') }}"
+  port: 2222
+  test_account: redteam-test
+  test_password_env: REDTEAM_SSH_TEST_PASSWORD
+
+parameters:
+  attempts: 50
+  interval_seconds: 1.5
+  success_after_attempt: 45
+  wrong_password: "wrongpassword123"
+
+expected_observables:
+  - type: auth_log
+    source: "/var/log/auth.log"
+    pattern: "Failed password"
+    min_occurrences: 40
+  - type: auth_log
+    source: "/var/log/auth.log"
+    pattern: "Accepted password"
+    min_occurrences: 1
+  - type: siem_alert
+    rule_id: SSH_BRUTEFORCE_DETECTION
+    max_ttd_seconds: 600
+
+cleanup:
+  - description: "No cleanup needed — uses ephemeral sandbox only"
+
+notes: >
+  Uses Paramiko library to send auth attempts. Interval between attempts
+  ensures the service is not disrupted. The final successful login uses
+  the pre-seeded test account.

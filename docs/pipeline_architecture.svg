@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" font-family="Segoe UI, sans-serif" font-size="12">
+  <rect width="900" height="520" rx="8" fill="#f8f9fa"/>
+  <text x="450" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#2c3e50">CI/CD Pipeline — GitHub Actions (redteam-on-demand.yml)</text>
+
+  <!-- Job 1: Preflight -->
+  <rect x="30" y="50" width="840" height="70" rx="6" fill="none" stroke="#95a5a6" stroke-dasharray="6 3"/>
+  <text x="44" y="68" font-size="11" fill="#7f8c8d" font-weight="bold">Job: preflight</text>
+  <rect x="60" y="78" width="200" height="34" rx="4" fill="#3498db"/>
+  <text x="160" y="100" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Validate Approval Ticket</text>
+  <text x="280" y="100" fill="#7f8c8d" font-size="10">— ticket ID, actor, scenario, mode</text>
+
+  <!-- Arrow down -->
+  <line x1="450" y1="120" x2="450" y2="148" stroke="#2c3e50" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="460" y="140" font-size="10" fill="#95a5a6">needs: preflight</text>
+
+  <!-- Job 2: simulate -->
+  <rect x="30" y="150" width="840" height="320" rx="6" fill="none" stroke="#2980b9" stroke-width="1.5"/>
+  <text x="44" y="170" font-size="11" fill="#2980b9" font-weight="bold">Job: simulate (runs-on: ubuntu-latest)</text>
+
+  <!-- Step: Checkout + Python -->
+  <rect x="60" y="182" width="150" height="34" rx="4" fill="#1abc9c"/>
+  <text x="135" y="204" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Checkout + Python</text>
+  <line x1="210" y1="199" x2="238" y2="199" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- Step: SSH Target -->
+  <rect x="240" y="182" width="155" height="34" rx="4" fill="#e67e22"/>
+  <text x="317" y="196" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Start SSH Target</text>
+  <text x="317" y="210" text-anchor="middle" fill="white" font-size="9">(T1: openssh :2222)</text>
+  <line x1="395" y1="199" x2="423" y2="199" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- Step: IAM Target -->
+  <rect x="425" y="182" width="155" height="34" rx="4" fill="#e67e22"/>
+  <text x="502" y="196" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Start IAM Target</text>
+  <text x="502" y="210" text-anchor="middle" fill="white" font-size="9">(T2: LocalStack :4566)</text>
+  <line x1="580" y1="199" x2="608" y2="199" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- Step: Health Check -->
+  <rect x="610" y="182" width="140" height="34" rx="4" fill="#e67e22"/>
+  <text x="680" y="196" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Health Check</text>
+  <text x="680" y="210" text-anchor="middle" fill="white" font-size="9">nc -z / curl wait</text>
+
+  <!-- Arrow down -->
+  <line x1="400" y1="216" x2="400" y2="240" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- Step: Run Simulation (central) -->
+  <rect x="120" y="242" width="660" height="46" rx="6" fill="#c0392b"/>
+  <text x="450" y="262" text-anchor="middle" fill="white" font-size="13" font-weight="bold">simulate.py --scenario $SCENARIO --mode safe</text>
+  <text x="450" y="280" text-anchor="middle" fill="#f5b7b1" font-size="10">T1: Paramiko SSH (50 attempts)  |  T2: Boto3 IAM (CreateRole → AttachPolicy → CreateKey)</text>
+
+  <!-- Arrows down -->
+  <line x1="290" y1="288" x2="290" y2="312" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#ah)"/>
+  <line x1="600" y1="288" x2="600" y2="312" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- Step: Evaluate -->
+  <rect x="120" y="314" width="330" height="34" rx="4" fill="#8e44ad"/>
+  <text x="285" y="336" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Evaluate — evaluate_results.py</text>
+
+  <!-- Arrow right -->
+  <line x1="450" y1="331" x2="468" y2="331" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- Step: Report -->
+  <rect x="470" y="314" width="310" height="34" rx="4" fill="#8e44ad"/>
+  <text x="625" y="336" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Generate Report — report.html (Jinja2)</text>
+
+  <!-- Arrow down -->
+  <line x1="450" y1="348" x2="450" y2="370" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- Step: Upload -->
+  <rect x="180" y="372" width="240" height="34" rx="4" fill="#27ae60"/>
+  <text x="300" y="394" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Upload Artifacts (30 days)</text>
+
+  <!-- Step: Teardown -->
+  <rect x="460" y="372" width="240" height="34" rx="4" fill="#e74c3c"/>
+  <text x="580" y="388" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Teardown (if: always)</text>
+  <text x="580" y="402" text-anchor="middle" fill="white" font-size="9">pkill sshd, docker rm localstack</text>
+
+  <!-- Artifacts output -->
+  <rect x="170" y="420" width="260" height="40" rx="4" fill="#ecf0f1" stroke="#bdc3c7"/>
+  <text x="300" y="438" text-anchor="middle" fill="#2c3e50" font-size="10" font-weight="bold">Artifacts:</text>
+  <text x="300" y="452" text-anchor="middle" fill="#555" font-size="10">results.json  |  evaluation.json  |  report.html</text>
+
+  <!-- Job 3: summary -->
+  <rect x="500" y="420" width="340" height="40" rx="4" fill="none" stroke="#95a5a6" stroke-dasharray="6 3"/>
+  <text x="514" y="436" font-size="10" fill="#7f8c8d" font-weight="bold">Job: summary</text>
+  <text x="514" y="452" font-size="10" fill="#95a5a6">→ GITHUB_STEP_SUMMARY table</text>
+
+  <!-- Legend -->
+  <rect x="50" y="480" width="14" height="14" rx="2" fill="#3498db"/>
+  <text x="70" y="492" font-size="10" fill="#555">Approval</text>
+  <rect x="145" y="480" width="14" height="14" rx="2" fill="#e67e22"/>
+  <text x="165" y="492" font-size="10" fill="#555">Provision</text>
+  <rect x="240" y="480" width="14" height="14" rx="2" fill="#c0392b"/>
+  <text x="260" y="492" font-size="10" fill="#555">Simulate</text>
+  <rect x="325" y="480" width="14" height="14" rx="2" fill="#8e44ad"/>
+  <text x="345" y="492" font-size="10" fill="#555">Evaluate / Report</text>
+  <rect x="465" y="480" width="14" height="14" rx="2" fill="#27ae60"/>
+  <text x="485" y="492" font-size="10" fill="#555">Artifact</text>
+  <rect x="545" y="480" width="14" height="14" rx="2" fill="#e74c3c"/>
+  <text x="565" y="492" font-size="10" fill="#555">Teardown</text>
+
+  <defs>
+    <marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2c3e50"/>
+    </marker>
+  </defs>
+</svg>

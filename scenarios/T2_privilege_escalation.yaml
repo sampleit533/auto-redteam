@@ -1,0 +1,51 @@
+id: t2_privilege_escalation
+version: "1.0"
+title: IAM Privilege Escalation Simulation (safe)
+mitre_ttp: T1078.004
+mitre_name: "Valid Accounts: Cloud Accounts"
+description: >
+  Simulate the API call sequence characteristic of privilege escalation:
+  CreateRole → AttachRolePolicy → CreateAccessKey, executed against a
+  sandbox IAM endpoint (LocalStack) using synthetic credentials.
+  No real AWS permissions are modified.
+
+target:
+  service: iam
+  endpoint: "{{ IAM_ENDPOINT | default('http://localstack:4566') }}"
+  region: us-east-1
+  test_principal_env: REDTEAM_IAM_PRINCIPAL
+
+parameters:
+  role_name: "redteam-test-role-{{ run_id }}"
+  policy_arn: "arn:aws:iam::aws:policy/ReadOnlyAccess"
+  delay_between_calls_seconds: 5
+  total_window_seconds: 300
+
+expected_observables:
+  - type: cloudtrail_log
+    event_name: CreateRole
+    min_occurrences: 1
+  - type: cloudtrail_log
+    event_name: AttachRolePolicy
+    min_occurrences: 1
+  - type: cloudtrail_log
+    event_name: CreateAccessKey
+    min_occurrences: 1
+  - type: siem_alert
+    rule_id: IAM_PRIVILEGE_ESCALATION_SEQUENCE
+    max_ttd_seconds: 300
+    condition: "all three events from same principal within 5 minutes"
+
+cleanup:
+  - action: delete_access_key
+    description: "Revoke the synthetic access key created during simulation"
+  - action: detach_role_policy
+    description: "Detach policy from test role"
+  - action: delete_role
+    description: "Delete the ephemeral test role"
+
+notes: >
+  Uses Boto3 with LocalStack as the IAM endpoint. All resources are
+  created in the sandbox account and cleaned up after the run.
+  The evaluator checks that all three CloudTrail events appear within
+  the expected time window from the same principal.

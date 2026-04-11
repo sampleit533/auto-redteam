@@ -1,0 +1,75 @@
+# TTP → expected SIEM alert mapping
+# Each entry defines what the evaluator must find in Elasticsearch after a scenario run.
+# Used by evaluate_results.py to compute detection coverage and TTD.
+
+mappings:
+  - scenario_id: t1_bruteforce_ssh
+    mitre_ttp: T1110.001
+    required_detections:
+      - rule_id: SSH_BRUTEFORCE_DETECTION
+        index_pattern: "redteam-logs-*"
+        query:
+          bool:
+            must:
+              - match: { "message": "Failed password" }
+        min_hits: 40
+        description: "Failed SSH auth attempts must appear in logs"
+      - rule_id: SSH_SUCCESS_AFTER_BRUTEFORCE
+        index_pattern: "redteam-logs-*"
+        query:
+          bool:
+            must:
+              - match: { "message": "Accepted password" }
+        min_hits: 1
+        description: "Successful login after brute-force must be logged"
+      - rule_id: SSH_SIEM_ALERT
+        type: siem_alert
+        description: "SIEM alert SSH_BRUTEFORCE fired (requires live Elasticsearch)"
+        min_hits: 1
+    max_ttd_seconds: 600
+
+  - scenario_id: t2_privilege_escalation
+    mitre_ttp: T1078.004
+    required_detections:
+      - rule_id: IAM_CREATE_ROLE
+        index_pattern: "redteam-cloudtrail-*"
+        query:
+          bool:
+            must:
+              - match: { "eventName": "CreateRole" }
+              - range:
+                  "eventTime":
+                    gte: "{{ sim_start }}"
+                    lte: "{{ sim_end }}"
+        min_hits: 1
+        description: "CreateRole event must appear in CloudTrail logs"
+      - rule_id: IAM_ATTACH_POLICY
+        index_pattern: "redteam-cloudtrail-*"
+        query:
+          bool:
+            must:
+              - match: { "eventName": "AttachRolePolicy" }
+              - range:
+                  "eventTime":
+                    gte: "{{ sim_start }}"
+                    lte: "{{ sim_end }}"
+        min_hits: 1
+        description: "AttachRolePolicy event must appear in CloudTrail logs"
+      - rule_id: IAM_CREATE_KEY
+        index_pattern: "redteam-cloudtrail-*"
+        query:
+          bool:
+            must:
+              - match: { "eventName": "CreateAccessKey" }
+              - range:
+                  "eventTime":
+                    gte: "{{ sim_start }}"
+                    lte: "{{ sim_end }}"
+        min_hits: 1
+        description: "CreateAccessKey event must appear in CloudTrail logs"
+      - rule_id: IAM_PRIVILEGE_ESCALATION_SEQUENCE
+        description: "All 3 events (CreateRole+AttachPolicy+CreateKey) from same principal within 5 min"
+        composite: true
+        requires: [IAM_CREATE_ROLE, IAM_ATTACH_POLICY, IAM_CREATE_KEY]
+        window_seconds: 300
+    max_ttd_seconds: 300

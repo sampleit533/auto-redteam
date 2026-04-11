@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" font-family="Segoe UI, sans-serif" font-size="12">
+  <rect width="900" height="400" rx="8" fill="#f8f9fa"/>
+  <text x="450" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#2c3e50">Data Flow — Simulation Runner → Evaluator → HTML Report</text>
+
+  <!-- Column 1: Scenario YAML -->
+  <rect x="30" y="60" width="140" height="130" rx="6" fill="#ecf0f1" stroke="#bdc3c7"/>
+  <text x="100" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#2c3e50">Scenario YAML</text>
+  <line x1="40" y1="88" x2="160" y2="88" stroke="#bdc3c7"/>
+  <text x="48" y="106" font-size="9" fill="#555">T1_bruteforce_ssh.yaml</text>
+  <text x="48" y="120" font-size="9" fill="#555">  target: SSH :2222</text>
+  <text x="48" y="134" font-size="9" fill="#555">  attempts: 50</text>
+  <text x="48" y="152" font-size="9" fill="#555">T2_privilege_esc.yaml</text>
+  <text x="48" y="166" font-size="9" fill="#555">  target: IAM :4566</text>
+  <text x="48" y="180" font-size="9" fill="#555">  3-step API sequence</text>
+
+  <line x1="170" y1="125" x2="198" y2="125" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- Column 2: simulate.py -->
+  <rect x="200" y="55" width="170" height="190" rx="6" fill="#c0392b"/>
+  <text x="285" y="78" text-anchor="middle" fill="white" font-size="12" font-weight="bold">simulate.py</text>
+  <line x1="210" y1="85" x2="360" y2="85" stroke="#e74c3c"/>
+
+  <rect x="214" y="96" width="142" height="36" rx="3" fill="#e74c3c"/>
+  <text x="285" y="112" text-anchor="middle" fill="white" font-size="10" font-weight="bold">t1_bruteforce.py</text>
+  <text x="285" y="126" text-anchor="middle" fill="#f5b7b1" font-size="9">Paramiko → auth_log obs.</text>
+
+  <rect x="214" y="140" width="142" height="36" rx="3" fill="#e74c3c"/>
+  <text x="285" y="156" text-anchor="middle" fill="white" font-size="10" font-weight="bold">t2_priv_escalation.py</text>
+  <text x="285" y="170" text-anchor="middle" fill="#f5b7b1" font-size="9">Boto3 → cloudtrail obs.</text>
+
+  <rect x="214" y="186" width="142" height="48" rx="3" fill="#d35400"/>
+  <text x="285" y="204" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Sandbox Targets</text>
+  <text x="285" y="218" text-anchor="middle" fill="#fad7a0" font-size="9">sshd :2222</text>
+  <text x="285" y="230" text-anchor="middle" fill="#fad7a0" font-size="9">LocalStack :4566</text>
+
+  <line x1="370" y1="125" x2="408" y2="125" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- Column 3: results.json -->
+  <rect x="410" y="70" width="130" height="110" rx="6" fill="#f39c12" stroke="#e67e22"/>
+  <text x="475" y="92" text-anchor="middle" font-size="11" font-weight="bold" fill="white">results.json</text>
+  <line x1="420" y1="99" x2="530" y2="99" stroke="#e67e22"/>
+  <text x="425" y="116" font-size="9" fill="white">run_id, mode</text>
+  <text x="425" y="132" font-size="9" fill="white">scenarios[]</text>
+  <text x="432" y="148" font-size="9" fill="#fef9e7">  .status</text>
+  <text x="432" y="164" font-size="9" fill="#fef9e7">  .observables_generated[]</text>
+
+  <line x1="475" y1="180" x2="475" y2="218" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- expected_mappings.yaml -->
+  <rect x="200" y="260" width="170" height="100" rx="6" fill="#ecf0f1" stroke="#bdc3c7"/>
+  <text x="285" y="280" text-anchor="middle" font-size="11" font-weight="bold" fill="#2c3e50">expected_mappings.yaml</text>
+  <line x1="210" y1="288" x2="360" y2="288" stroke="#bdc3c7"/>
+  <text x="215" y="306" font-size="9" fill="#555">T1: Failed password ≥ 40</text>
+  <text x="215" y="320" font-size="9" fill="#555">T1: Accepted password ≥ 1</text>
+  <text x="215" y="334" font-size="9" fill="#555">T2: CreateRole + AttachPolicy</text>
+  <text x="215" y="348" font-size="9" fill="#555">     + CreateKey &lt; 5 min</text>
+
+  <line x1="370" y1="290" x2="408" y2="260" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- evaluate_results.py -->
+  <rect x="410" y="220" width="160" height="80" rx="6" fill="#8e44ad"/>
+  <text x="490" y="244" text-anchor="middle" fill="white" font-size="11" font-weight="bold">evaluate_results.py</text>
+  <line x1="420" y1="250" x2="560" y2="250" stroke="#9b59b6"/>
+  <text x="422" y="268" font-size="9" fill="#d7bde2">so khớp observables</text>
+  <text x="422" y="282" font-size="9" fill="#d7bde2">  vs expected mappings</text>
+  <text x="422" y="296" font-size="9" fill="#d7bde2">→ coverage %, PASS/FAIL</text>
+
+  <line x1="570" y1="260" x2="608" y2="260" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- evaluation.json -->
+  <rect x="610" y="220" width="130" height="80" rx="6" fill="#2980b9"/>
+  <text x="675" y="244" text-anchor="middle" font-size="11" font-weight="bold" fill="white">evaluation.json</text>
+  <line x1="620" y1="250" x2="730" y2="250" stroke="#3498db"/>
+  <text x="622" y="268" font-size="9" fill="#d6eaf8">summary.coverage_pct</text>
+  <text x="622" y="282" font-size="9" fill="#d6eaf8">scenarios[].detections[]</text>
+  <text x="622" y="296" font-size="9" fill="#d6eaf8">  .passed  .hit_count</text>
+
+  <line x1="675" y1="300" x2="675" y2="318" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- generate_report.py -->
+  <rect x="610" y="320" width="130" height="40" rx="4" fill="#8e44ad"/>
+  <text x="675" y="340" text-anchor="middle" fill="white" font-size="10" font-weight="bold">generate_report.py</text>
+  <text x="675" y="354" text-anchor="middle" fill="#d7bde2" font-size="9">Jinja2 template</text>
+
+  <line x1="740" y1="340" x2="768" y2="340" stroke="#2c3e50" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- report.html -->
+  <rect x="770" y="310" width="110" height="60" rx="6" fill="#27ae60"/>
+  <text x="825" y="336" text-anchor="middle" fill="white" font-size="12" font-weight="bold">report.html</text>
+  <text x="825" y="352" text-anchor="middle" fill="#d5f5e3" font-size="9">CI Artifact</text>
+  <text x="825" y="364" text-anchor="middle" fill="#d5f5e3" font-size="9">30 days retention</text>
+
+  <!-- GitHub Actions Artifacts -->
+  <rect x="770" y="100" width="110" height="52" rx="6" fill="#27ae60" stroke="#1e8449"/>
+  <text x="825" y="120" text-anchor="middle" fill="white" font-size="10" font-weight="bold">GitHub Actions</text>
+  <text x="825" y="134" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Artifacts</text>
+  <text x="825" y="148" text-anchor="middle" fill="#d5f5e3" font-size="9">upload-artifact@v4</text>
+  <line x1="825" y1="152" x2="825" y2="308" stroke="#27ae60" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#a2)"/>
+
+  <defs>
+    <marker id="a2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2c3e50"/>
+    </marker>
+  </defs>
+</svg>

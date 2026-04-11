@@ -1,0 +1,90 @@
+name: RedTeam — Scheduled Baseline
+
+on:
+  schedule:
+    # Every night at 02:00 UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Execution mode'
+        required: false
+        type: choice
+        options:
+          - safe
+          - dry-run
+        default: safe
+
+env:
+  ELASTICSEARCH_HOST: http://localhost:9200
+  IAM_ENDPOINT: http://localhost:4566
+
+jobs:
+  nightly-baseline:
+    name: Nightly baseline — all scenarios
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install runner dependencies
+        run: pip install -r runners/requirements.txt
+
+      - name: Start sandbox targets
+        run: |
+          cd targets
+          docker compose up -d
+          echo "Waiting for services to be ready..."
+          sleep 15
+
+      - name: Run all scenarios
+        env:
+          REDTEAM_SSH_TEST_PASSWORD: ${{ secrets.REDTEAM_SSH_TEST_PASSWORD }}
+          TARGET_SSH_HOST: localhost
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          REDTEAM_IAM_PRINCIPAL: github-actions-${{ github.run_id }}
+        run: |
+          MODE="${{ github.event.inputs.mode || 'safe' }}"
+          python runners/simulate.py \
+            --scenario all \
+            --mode $MODE \
+            --run-id ${{ github.run_id }} \
+            --output artifacts/results.json
+
+      - name: Evaluate detections
+        run: |
+          python evaluation/evaluate_results.py \
+            --results artifacts/results.json \
+            --mappings evaluation/expected_mappings.yaml \
+            --out artifacts/evaluation.json
+
+      - name: Generate report
+        if: always()
+        run: |
+          if [ ! -f artifacts/evaluation.json ]; then
+            python reporting/make_eval_stub.py
+          fi
+          python reporting/generate_report.py \
+            --evaluation artifacts/evaluation.json \
+            --template reporting/templates/report.html.j2 \
+            --out artifacts/report.html || true
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-report-${{ github.run_id }}
+          path: artifacts/
+          retention-days: 90
+
+      - name: Teardown sandbox
+        if: always()
+        run: |
+          cd targets
+          docker compose down -v
