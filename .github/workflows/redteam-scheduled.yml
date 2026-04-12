@@ -64,9 +64,19 @@ jobs:
           docker run -d --name localstack \
             -p 127.0.0.1:4566:4566 \
             -e SERVICES=iam,sts,cloudtrail \
+            -e EAGER_SERVICE_LOADING=1 \
             localstack/localstack:3
-          timeout 60 bash -c 'until curl -sf http://localhost:4566/_localstack/health | grep -q running; do sleep 2; done'
-          echo "LocalStack ready"
+          echo "Waiting for LocalStack to be ready..."
+          for i in {1..40}; do
+            if curl -sf http://localhost:4566/_localstack/health > /dev/null 2>&1; then
+              echo "LocalStack ready after ~$((i*3))s"
+              break
+            fi
+            echo "Attempt $i/40: LocalStack not ready yet..."
+            sleep 3
+          done
+          # Final check
+          curl -sf http://localhost:4566/_localstack/health || { echo "LocalStack failed to start"; docker logs localstack; exit 1; }
 
       - name: Run all scenarios
         env:
