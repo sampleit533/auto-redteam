@@ -15,32 +15,25 @@ networks:
 
 services:
 
-  # T1 target — SSH server with test account
+  # T1 target — SSH server with test account (custom image)
   target-ssh:
-    image: lscr.io/linuxserver/openssh-server:latest
+    build:
+      context: ./ssh-target
+      args:
+        SSH_USER: redteam-test
+        SSH_PASSWORD: ${REDTEAM_SSH_TEST_PASSWORD:-RedteamPass123!}
     container_name: target-ssh
     networks:
       - redteam-internal
       - redteam-host
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - USER_NAME=redteam-test
-      - USER_PASSWORD=${REDTEAM_SSH_TEST_PASSWORD:-RedteamPass123!}
-      - PASSWORD_ACCESS=true
-      - SUDO_ACCESS=false
-    # Publish to localhost so the simulation runner (on the host) can connect
     ports:
       - "127.0.0.1:2222:2222"
-    # Custom sshd config to handle rapid auth attempts
-    volumes:
-      - ./sshd_custom.conf:/etc/ssh/sshd_config.d/99-redteam.conf:ro
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2222"]
+      test: ["CMD-SHELL", "nc -z localhost 2222 || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 10
-      start_period: 10s
+      start_period: 5s
 
   # T2 target — LocalStack (mock AWS IAM + CloudTrail)
   localstack:

@@ -39,38 +39,47 @@ def run(scenario_def: dict, run_id: str, mode: str) -> dict:
         use_correct = i == success_after
         password = test_password if use_correct else wrong_password
 
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        # Retry logic for transient connection errors
+        max_retries = 3
+        for retry in range(max_retries):
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-        try:
-            client.connect(
-                hostname=host,
-                port=port,
-                username=test_account,
-                password=password,
-                timeout=5,
-                banner_timeout=5,
-                auth_timeout=5,
-                look_for_keys=False,
-                allow_agent=False,
-            )
-            print(f"[T1] Attempt {i:3d}/{attempts}: SUCCESS (accepted)")
-            observables.append({"type": "auth_log", "pattern": "Accepted password", "attempt": i})
-            success = True
-            client.close()
-        except paramiko.AuthenticationException:
-            failed_count += 1
-            if i % 10 == 0 or i == 1:
-                print(f"[T1] Attempt {i:3d}/{attempts}: FAILED (auth) — {failed_count} failures so far")
-            observables.append({"type": "auth_log", "pattern": "Failed password", "attempt": i})
-        except (socket.error, paramiko.SSHException) as e:
-            print(f"[T1] Attempt {i:3d}/{attempts}: CONNECTION ERROR — {e}")
-            observables.append({"type": "error", "message": str(e), "attempt": i})
-        finally:
             try:
-                client.close()
-            except Exception:
-                pass
+                client.connect(
+                    hostname=host,
+                    port=port,
+                    username=test_account,
+                    password=password,
+                    timeout=10,
+                    banner_timeout=10,
+                    auth_timeout=10,
+                    look_for_keys=False,
+                    allow_agent=False,
+                )
+                print(f"[T1] Attempt {i:3d}/{attempts}: SUCCESS (accepted)")
+                observables.append({"type": "auth_log", "pattern": "Accepted password", "attempt": i})
+                success = True
+                break  # Exit retry loop on success
+            except paramiko.AuthenticationException:
+                failed_count += 1
+                if i % 10 == 0 or i == 1:
+                    print(f"[T1] Attempt {i:3d}/{attempts}: FAILED (auth) — {failed_count} failures so far")
+                observables.append({"type": "auth_log", "pattern": "Failed password", "attempt": i})
+                break  # Auth failure is expected, exit retry loop
+            except (socket.error, paramiko.SSHException) as e:
+                if retry < max_retries - 1:
+                    backoff = (retry + 1) * 2
+                    print(f"[T1] Attempt {i:3d}/{attempts}: CONNECTION ERROR — retry {retry+1}/{max_retries} in {backoff}s")
+                    time.sleep(backoff)
+                else:
+                    print(f"[T1] Attempt {i:3d}/{attempts}: CONNECTION ERROR — {e}")
+                    observables.append({"type": "error", "message": str(e), "attempt": i})
+            finally:
+                try:
+                    client.close()
+                except Exception:
+                    pass
 
         if i < attempts:
             time.sleep(interval)
