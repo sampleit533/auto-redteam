@@ -1,13 +1,17 @@
 version: "3.9"
 
-# Sandbox target workloads — all containers are internal only (no published ports to host)
+# Sandbox target workloads for red team simulations
 # Bring up: docker compose up -d
 # Tear down: docker compose down -v
 
 networks:
-  redteam-sandbox:
+  # Internal network for container-to-container traffic (no internet)
+  redteam-internal:
     driver: bridge
-    internal: true   # No internet access
+    internal: true
+  # Host-accessible network for simulation runners to connect
+  redteam-host:
+    driver: bridge
 
 services:
 
@@ -16,7 +20,8 @@ services:
     image: lscr.io/linuxserver/openssh-server:latest
     container_name: target-ssh
     networks:
-      - redteam-sandbox
+      - redteam-internal
+      - redteam-host
     environment:
       - PUID=1000
       - PGID=1000
@@ -27,13 +32,20 @@ services:
     # Publish to localhost so the simulation runner (on the host) can connect
     ports:
       - "127.0.0.1:2222:2222"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2222"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   # T2 target — LocalStack (mock AWS IAM + CloudTrail)
   localstack:
     image: localstack/localstack:3
     container_name: localstack
     networks:
-      - redteam-sandbox
+      - redteam-internal
+      - redteam-host
     environment:
       - SERVICES=iam,sts,cloudtrail
       - DEBUG=0
@@ -42,14 +54,20 @@ services:
       - "127.0.0.1:4566:4566"
     volumes:
       - localstack-data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
 
-  # Filebeat — ships logs to Elasticsearch
+  # Filebeat — ships logs to Elasticsearch (optional, only internal network needed)
   filebeat:
     image: docker.elastic.co/beats/filebeat:8.13.0
     container_name: filebeat
     user: root
     networks:
-      - redteam-sandbox
+      - redteam-internal
     volumes:
       - ../collection/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro

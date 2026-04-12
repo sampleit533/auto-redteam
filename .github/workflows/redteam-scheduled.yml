@@ -39,8 +39,13 @@ jobs:
         run: |
           cd targets
           docker compose up -d
-          echo "Waiting for services to be ready..."
-          sleep 15
+          echo "Waiting for services to be healthy..."
+          # Wait for SSH target
+          timeout 60 bash -c 'until nc -z 127.0.0.1 2222; do echo "Waiting for SSH..."; sleep 2; done'
+          echo "SSH target ready"
+          # Wait for LocalStack
+          timeout 90 bash -c 'until curl -sf http://localhost:4566/_localstack/health; do echo "Waiting for LocalStack..."; sleep 3; done'
+          echo "LocalStack ready"
 
       - name: Run all scenarios
         env:
