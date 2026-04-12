@@ -18,7 +18,7 @@ target:
 
 parameters:
   attempts: 50
-  interval_seconds: 1.5
+  interval_seconds: 2.5
   success_after_attempt: 45
   wrong_password: "wrongpassword123"
 

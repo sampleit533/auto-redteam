@@ -32,6 +32,9 @@ services:
     # Publish to localhost so the simulation runner (on the host) can connect
     ports:
       - "127.0.0.1:2222:2222"
+    # Custom sshd config to handle rapid auth attempts
+    volumes:
+      - ./sshd_custom.conf:/etc/ssh/sshd_config.d/99-redteam.conf:ro
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "2222"]
       interval: 5s
