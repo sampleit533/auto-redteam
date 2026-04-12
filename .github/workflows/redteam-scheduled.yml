@@ -35,16 +35,37 @@ jobs:
       - name: Install runner dependencies
         run: pip install -r runners/requirements.txt
 
-      - name: Start sandbox targets
+      - name: Start SSH target (native on runner)
+        env:
+          REDTEAM_SSH_TEST_PASSWORD: ${{ secrets.REDTEAM_SSH_TEST_PASSWORD || 'RedteamPass123!' }}
         run: |
-          cd targets
-          docker compose up -d
-          echo "Waiting for services to be healthy..."
-          # Wait for SSH target
-          timeout 60 bash -c 'until nc -z 127.0.0.1 2222; do echo "Waiting for SSH..."; sleep 2; done'
-          echo "SSH target ready"
-          # Wait for LocalStack
-          timeout 90 bash -c 'until curl -sf http://localhost:4566/_localstack/health; do echo "Waiting for LocalStack..."; sleep 3; done'
+          # Install and configure OpenSSH server directly on the runner
+          sudo apt-get update && sudo apt-get install -y openssh-server
+          # Create test account
+          sudo useradd -m -s /bin/bash redteam-test || true
+          echo "redteam-test:${REDTEAM_SSH_TEST_PASSWORD}" | sudo chpasswd
+          # Configure sshd for brute-force simulation
+          sudo mkdir -p /run/sshd
+          sudo tee /etc/ssh/sshd_config.d/redteam.conf > /dev/null <<EOF
+          Port 2222
+          PasswordAuthentication yes
+          MaxAuthTries 100
+          MaxStartups 100:30:200
+          LoginGraceTime 120
+          EOF
+          # Start sshd
+          sudo /usr/sbin/sshd
+          # Wait until port is ready
+          timeout 15 bash -c 'until nc -z 127.0.0.1 2222; do sleep 1; done'
+          echo "SSH ready on port 2222"
+
+      - name: Start LocalStack (IAM target)
+        run: |
+          docker run -d --name localstack \
+            -p 127.0.0.1:4566:4566 \
+            -e SERVICES=iam,sts,cloudtrail \
+            localstack/localstack:3
+          timeout 60 bash -c 'until curl -sf http://localhost:4566/_localstack/health | grep -q running; do sleep 2; done'
           echo "LocalStack ready"
 
       - name: Run all scenarios
@@ -91,5 +112,5 @@ jobs:
       - name: Teardown sandbox
         if: always()
         run: |
-          cd targets
-          docker compose down -v
+          sudo pkill sshd || true
+          docker rm -f localstack || true
