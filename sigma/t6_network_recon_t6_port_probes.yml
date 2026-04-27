@@ -1,0 +1,21 @@
+title: T6 Port Probes
+id: 4dfa8713-b30e-5adb-9acc-213b84bc0c5d
+status: experimental
+description: ≥20 port probes recorded in scan log
+references:
+- https://attack.mitre.org/techniques/T1046/
+- https://github.com/auto-redteam/scenarios/t6_network_recon
+author: auto-redteam (capstone)
+date: '2026-04-27'
+tags:
+- attack.discovery
+- attack.t1046
+logsource:
+  category: network_connection
+detection:
+  selection:
+    pattern: port_probe
+  condition: selection | count() > 19
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

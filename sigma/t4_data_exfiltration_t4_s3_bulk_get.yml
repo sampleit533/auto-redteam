@@ -1,0 +1,22 @@
+title: T4 S3 Bulk Get
+id: 2dcaa8a5-0a8f-5f7b-9b95-7ffbeb93fbcf
+status: experimental
+description: ≥80 GetObject events recorded in the simulation window
+references:
+- https://attack.mitre.org/techniques/T1530/
+- https://github.com/auto-redteam/scenarios/t4_data_exfiltration
+author: auto-redteam (capstone)
+date: '2026-04-27'
+tags:
+- attack.collection
+- attack.t1530
+logsource:
+  product: aws
+  service: s3
+detection:
+  selection:
+    event_name: GetObject
+  condition: selection | count() > 79
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

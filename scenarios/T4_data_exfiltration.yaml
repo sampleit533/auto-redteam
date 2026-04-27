@@ -1,0 +1,43 @@
+id: t4_data_exfiltration
+version: "1.0"
+title: Data Access / Bulk S3 Read Pattern (safe)
+mitre_ttp: T1530
+mitre_name: "Data from Cloud Storage Object"
+description: >
+  Simulate the bulk-read pattern characteristic of data staging before
+  exfiltration: create a sandbox S3 bucket, populate it with synthetic
+  objects, and read them rapidly from a single principal. No real data
+  is transferred outside the sandbox.
+
+target:
+  service: s3
+  endpoint: "{{ IAM_ENDPOINT | default('http://localstack:4566') }}"
+  region: us-east-1
+  test_principal_env: REDTEAM_IAM_PRINCIPAL
+
+parameters:
+  bucket_name: "redteam-test-bucket-{{ run_id }}"
+  num_objects: 100
+  object_size_bytes: 256
+  read_count: 100
+  delay_between_reads_seconds: 0.05
+
+expected_observables:
+  - type: s3_access_log
+    event_name: GetObject
+    min_occurrences: 80
+  - type: siem_alert
+    rule_id: S3_BULK_READ_ANOMALY
+    max_ttd_seconds: 180
+
+cleanup:
+  - action: delete_objects
+    description: "Delete all synthetic objects from the test bucket"
+  - action: delete_bucket
+    description: "Delete the ephemeral test bucket"
+
+notes: >
+  Uses Boto3 with LocalStack as the S3 endpoint. The sink is the same
+  bucket — no data leaves the sandbox. Detection target: SIEM volume
+  anomaly rule that triggers on N GetObject events from the same
+  principal within a short time window.

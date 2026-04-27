@@ -1,0 +1,21 @@
+title: T6 Port Fanout
+id: b0db49b0-697c-5a8b-b15a-17927ab84fe3
+status: experimental
+description: Probes target ≥5 distinct destination ports (scan fan-out pattern)
+references:
+- https://attack.mitre.org/techniques/T1046/
+- https://github.com/auto-redteam/scenarios/t6_network_recon
+author: auto-redteam (capstone)
+date: '2026-04-27'
+tags:
+- attack.discovery
+- attack.t1046
+logsource:
+  category: network_connection
+detection:
+  selection:
+    pattern: port_probe
+  condition: selection | count(unique:destination_port) > 4
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

@@ -1,0 +1,41 @@
+id: t3_lateral_movement
+version: "1.0"
+title: Lateral Movement Pattern (safe)
+mitre_ttp: T1021
+mitre_name: "Remote Services"
+description: >
+  Simulate lateral movement by connecting from a single source to multiple
+  internal hosts in the sandbox Docker network in rapid succession.
+  Non-destructive: TCP connect attempts only, no exploitation, no payload
+  delivery. The runner records every probe outcome as an observable.
+
+target:
+  service: docker-network
+  hosts:
+    - { name: target-ssh,    port: 2222, protocol: ssh }
+    - { name: target-web,    port: 8080, protocol: http }
+    - { name: target-redis,  port: 6379, protocol: redis }
+    - { name: localstack,    port: 4566, protocol: aws-api }
+    - { name: target-web,    port: 80,   protocol: http }
+
+parameters:
+  source_label: redteam-runner
+  interval_seconds: 1.0
+  connect_timeout_seconds: 3.0
+
+expected_observables:
+  - type: connection_log
+    pattern: "remote_service_connection"
+    min_occurrences: 4
+  - type: siem_alert
+    rule_id: NIDS_LATERAL_MOVEMENT
+    max_ttd_seconds: 180
+
+cleanup:
+  - description: "No cleanup needed — TCP connect probes are stateless"
+
+notes: >
+  Detection target: NIDS / flow analyzer that flags one source IP connecting
+  to many distinct destinations in a short time window. The evaluator
+  validates fan-out by counting unique destination_host values in the
+  generated connection_log observables.

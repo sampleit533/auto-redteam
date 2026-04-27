@@ -1,0 +1,46 @@
+id: t5_ci_compromise
+version: "1.0"
+title: Supply-chain / CI Compromise Pattern (safe)
+mitre_ttp: T1195.001
+mitre_name: "Supply Chain Compromise: Compromise Software Dependencies"
+description: >
+  Simulate the audit-log pattern of an unauthorized CI workflow execution
+  combined with anomalous repository secret access. Pure observable
+  generation — no actual GitHub Actions are triggered, no secrets are
+  read, and no real CI artifacts are created.
+
+target:
+  service: ci-audit
+  org_name: "redteam-sandbox-org"
+  repo_name: "redteam-sandbox-repo"
+  test_principal_env: REDTEAM_CI_ACTOR
+
+parameters:
+  approved_workflows:
+    - .github/workflows/redteam-on-demand.yml
+    - .github/workflows/redteam-scheduled.yml
+  unauthorized_workflow: ".github/workflows/exfil-test.yml"
+  secret_name: "REDTEAM_DEPLOY_KEY"
+  unusual_context: "manual-trigger-from-fork"
+  delay_between_events_seconds: 2.0
+
+expected_observables:
+  - type: audit_log
+    event_name: "workflow_run.unauthorized_job"
+    min_occurrences: 1
+  - type: audit_log
+    event_name: "secret.read"
+    min_occurrences: 1
+  - type: siem_alert
+    rule_id: CI_UNAUTHORIZED_WORKFLOW
+    max_ttd_seconds: 600
+
+cleanup:
+  - description: "No cleanup needed — observables only, no real CI artifacts created"
+
+notes: >
+  Generates synthetic audit-log events that mirror the GitHub Actions
+  audit log shape. Detection target: rule that correlates an
+  unauthorized workflow run with a secret read by the same actor in a
+  short window. The evaluator enforces this correlation via a composite
+  rule in expected_mappings.yaml.

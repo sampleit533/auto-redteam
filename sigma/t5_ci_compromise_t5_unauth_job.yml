@@ -1,0 +1,22 @@
+title: T5 Unauth Job
+id: 197abe74-0ed0-56f7-9df1-ea76b5ce98a3
+status: experimental
+description: Audit log shows a workflow run that is not in the approved list
+references:
+- https://attack.mitre.org/techniques/T1195/001/
+- https://github.com/auto-redteam/scenarios/t5_ci_compromise
+author: auto-redteam (capstone)
+date: '2026-04-27'
+tags:
+- attack.initial_access
+- attack.t1195.001
+logsource:
+  product: github
+  service: audit
+detection:
+  selection:
+    event_name: workflow_run.unauthorized_job
+  condition: selection
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

@@ -97,10 +97,12 @@ yaml_name_map = {
 
 ## Step 4 — Add detection mappings
 
-Add a block to `evaluation/expected_mappings.yaml`:
+Add a block to `evaluation/expected_mappings.yaml`. The evaluator supports two styles:
+
+**A. Legacy ES-query style** — mirrors Elasticsearch DSL, used by T1/T2:
 
 ```yaml
-  - scenario_id: t3_my_scenario
+  - scenario_id: tx_my_scenario
     mitre_ttp: T1021
     required_detections:
       - rule_id: MY_DETECTION_RULE
@@ -112,6 +114,47 @@ Add a block to `evaluation/expected_mappings.yaml`:
         min_hits: 1
         description: "Expected log pattern must appear"
     max_ttd_seconds: 300
+```
+
+**B. Observable-type style** (preferred for new scenarios) — more concise, used by T3/T4/T6:
+
+```yaml
+  - scenario_id: tx_my_scenario
+    mitre_ttp: T1021
+    required_detections:
+      - rule_id: MY_RULE_HITS
+        observable_type: connection_log     # observable type emitted by your runner
+        match_field: pattern                # field to filter on (e.g. pattern, event_name)
+        match_value: "remote_service_connection"
+        min_hits: 5
+        description: "≥5 matching observables"
+      - rule_id: MY_RULE_FANOUT
+        observable_type: connection_log
+        match_field: pattern
+        match_value: "remote_service_connection"
+        unique_field: destination_host      # count unique values of this field
+        min_unique: 4
+        description: "Source touches ≥4 distinct destinations"
+      - rule_id: MY_RULE_SIEM
+        type: siem_alert                    # always skipped in CI (no live SIEM)
+        description: "SIEM alert (live SIEM only)"
+        min_hits: 1
+    max_ttd_seconds: 300
+```
+
+**Composite rule** (optional, used by T2/T5) — correlates multiple sub-rules + same actor + time window:
+
+```yaml
+      - rule_id: MY_COMPOSITE
+        composite: true
+        requires: [MY_RULE_A, MY_RULE_B]    # all must pass
+        group_by: actor                     # field used to identify "same actor" (default: principal)
+        observable_types: [audit_log]       # which observable types to consider (default: cloudtrail_log)
+        required_event_names:               # event_names that must all appear in one group
+          - workflow_run.unauthorized_job
+          - secret.read
+        window_seconds: 60                  # max time span between first and last event
+        description: "Same actor performs both actions within 60s"
 ```
 
 ---
@@ -126,7 +169,11 @@ In `.github/workflows/redteam-on-demand.yml`, add the new ID to the `options` li
         options:
           - t1_bruteforce_ssh
           - t2_privilege_escalation
-          - t3_my_scenario      # ← add here
+          - t3_lateral_movement
+          - t4_data_exfiltration
+          - t5_ci_compromise
+          - t6_network_recon
+          - tx_my_scenario      # ← add here
           - all
 ```
 

@@ -25,6 +25,10 @@ RUNNERS_DIR = Path(__file__).parent / "scenarios"
 SCENARIO_MODULE_MAP = {
     "t1_bruteforce_ssh": "t1_bruteforce",
     "t2_privilege_escalation": "t2_priv_escalation",
+    "t3_lateral_movement": "t3_lateral_movement",
+    "t4_data_exfiltration": "t4_data_exfiltration",
+    "t5_ci_compromise": "t5_ci_compromise",
+    "t6_network_recon": "t6_network_recon",
 }
 
 
@@ -34,6 +38,10 @@ def load_scenario_def(scenario_id: str) -> dict:
     yaml_name_map = {
         "t1_bruteforce_ssh": "T1_bruteforce_ssh.yaml",
         "t2_privilege_escalation": "T2_privilege_escalation.yaml",
+        "t3_lateral_movement": "T3_lateral_movement.yaml",
+        "t4_data_exfiltration": "T4_data_exfiltration.yaml",
+        "t5_ci_compromise": "T5_ci_compromise.yaml",
+        "t6_network_recon": "T6_network_recon.yaml",
     }
     yaml_file = SCENARIOS_DIR / yaml_name_map.get(scenario_id, f"{scenario_id}.yaml")
     if not yaml_file.exists():

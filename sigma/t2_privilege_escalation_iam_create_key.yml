@@ -1,0 +1,23 @@
+title: Iam Create Key
+id: 1742e38a-fb65-5f33-b611-33ae284731c6
+status: experimental
+description: CreateAccessKey event must appear in CloudTrail logs
+references:
+- https://attack.mitre.org/techniques/T1078/004/
+- https://github.com/auto-redteam/scenarios/t2_privilege_escalation
+author: auto-redteam (capstone)
+date: '2026-04-27'
+tags:
+- attack.persistence
+- attack.privilege_escalation
+- attack.t1078.004
+logsource:
+  product: aws
+  service: cloudtrail
+detection:
+  selection:
+    EventName: CreateAccessKey
+  condition: selection
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

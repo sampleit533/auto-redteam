@@ -59,11 +59,11 @@ jobs:
           timeout 15 bash -c 'until nc -z 127.0.0.1 2222; do sleep 1; done'
           echo "SSH ready on port 2222"
 
-      - name: Start LocalStack (IAM target)
+      - name: Start LocalStack (T2/T4 target — IAM + S3)
         run: |
           docker run -d --name localstack \
             -p 127.0.0.1:4566:4566 \
-            -e SERVICES=iam,sts,cloudtrail \
+            -e SERVICES=iam,sts,cloudtrail,s3 \
             -e EAGER_SERVICE_LOADING=1 \
             localstack/localstack:3
           echo "Waiting for LocalStack to be ready..."
@@ -78,13 +78,27 @@ jobs:
           # Final check
           curl -sf http://localhost:4566/_localstack/health || { echo "LocalStack failed to start"; docker logs localstack; exit 1; }
 
+      - name: Start lateral-move/recon targets (T3, T6)
+        run: |
+          docker run -d --name target-web -p 127.0.0.1:8080:80 nginx:alpine
+          docker run -d --name target-redis -p 127.0.0.1:6379:6379 redis:7-alpine
+          timeout 30 bash -c 'until nc -z 127.0.0.1 8080; do sleep 1; done' && echo "target-web ready"
+          timeout 30 bash -c 'until nc -z 127.0.0.1 6379; do sleep 1; done' && echo "target-redis ready"
+
+      - name: Build pcap recorder image (T3/T6)
+        run: |
+          docker build -q -t redteam/pcap-recorder:latest targets/pcap-recorder/
+
       - name: Run all scenarios
         env:
           REDTEAM_SSH_TEST_PASSWORD: ${{ secrets.REDTEAM_SSH_TEST_PASSWORD }}
           TARGET_SSH_HOST: localhost
+          TARGET_USE_LOCALHOST: "1"
           AWS_ACCESS_KEY_ID: test
           AWS_SECRET_ACCESS_KEY: test
           REDTEAM_IAM_PRINCIPAL: github-actions-${{ github.run_id }}
+          REDTEAM_CI_ACTOR: github-actions-${{ github.run_id }}
+          ENABLE_PCAP: "1"
         run: |
           MODE="${{ github.event.inputs.mode || 'safe' }}"
           python runners/simulate.py \
@@ -110,6 +124,21 @@ jobs:
             --evaluation artifacts/evaluation.json \
             --template reporting/templates/report.html.j2 \
             --out artifacts/report.html || true
+          python reporting/generate_trends.py \
+            --history artifacts/history \
+            --template reporting/templates/trends.html.j2 \
+            --out artifacts/trends.html || true
+
+      - name: Baseline regression gate (fails build on detection regression)
+        run: |
+          python evaluation/check_baseline.py \
+            --baseline evaluation/baseline.json \
+            --current artifacts/evaluation.json
+
+      - name: Export Sigma rules
+        if: always()
+        run: |
+          python evaluation/export_sigma.py --out-dir artifacts/sigma
 
       - name: Upload artifacts
         if: always()
@@ -123,4 +152,4 @@ jobs:
         if: always()
         run: |
           sudo pkill sshd || true
-          docker rm -f localstack || true
+          docker rm -f localstack target-web target-redis || true

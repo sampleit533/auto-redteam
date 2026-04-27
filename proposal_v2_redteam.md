@@ -19,16 +19,10 @@ Xây dựng một hệ thống tự động hóa kiểm thử bảo mật theo p
 **Về kỹ thuật:**
 
 - Thiết kế và triển khai pipeline CI/CD có khả năng tự động khởi chạy, giám sát và dọn dẹp các kịch bản tấn công mô phỏng trên môi trường sandbox cách ly.
-- Tích hợp tối thiểu 2 kịch bản TTP theo chuẩn MITRE ATT&CK ở mức end-to-end; các kịch bản còn lại được mô tả như hướng mở rộng học thuật.
+- Tích hợp 6 kịch bản TTP theo chuẩn MITRE ATT&CK ở mức end-to-end (T1–T6), bao phủ các nhóm Credential Access, Cloud Privilege Escalation, Lateral Movement, Data Access, Supply-chain và Discovery.
 - Xây dựng evaluator tự động so khớp telemetry/observables thu được với expected detections, tính toán detection coverage và cửa sổ phát hiện của chuỗi sự kiện.
 - Tạo báo cáo HTML tự động sau mỗi lần chạy; các tích hợp như Slack/JIRA chỉ được xem là phần mở rộng, không phải hạng mục bắt buộc của đồ án.
 - Đảm bảo hạ tầng sandbox có thể tạo và dọn dẹp tự động bằng Docker Compose và Terraform ở mức lab.
-
-**Về học thuật:**
-
-- Giúp sinh viên hiểu và vận dụng thực tế khung MITRE ATT&CK trong detection engineering.
-- Trải nghiệm mô hình DevSecOps shift-left: đưa kiểm thử bảo mật vào sớm trong vòng đời phát triển phần mềm.
-- Rèn luyện kỹ năng vận hành cloud infrastructure ở mức mô phỏng (Terraform), container orchestration (Docker), viết automation scripts (Python, Bash) và tổ chức artifacts đánh giá phục vụ học tập.
 
 ---
 
@@ -51,7 +45,7 @@ Giải pháp đề xuất là mô hình **Continuous Detection Validation** — 
 
 | | Chi tiết |
 |---|---|
-| **Trong phạm vi** | Môi trường sandbox/test cách ly, 2 kịch bản TTP triển khai hoàn chỉnh, pipeline GitHub Actions, báo cáo HTML tự động, evaluator dựa trên observables |
+| **Trong phạm vi** | Môi trường sandbox/test cách ly, 6 kịch bản TTP (T1–T6) triển khai end-to-end, pipeline GitHub Actions, báo cáo HTML tự động, evaluator dựa trên observables |
 | **Ngoài phạm vi** | Production environment, khai thác lỗ hổng thật, external network targets, malware, Slack/JIRA production integration, SIEM enterprise hoàn chỉnh |
 
 ### 3.4 Giới hạn theo phạm vi học phần
@@ -59,7 +53,7 @@ Giải pháp đề xuất là mô hình **Continuous Detection Validation** — 
 Vì đây là đồ án phục vụ môn học đại học, đề tài được giới hạn ở mức **prototype học thuật có thể demo được**, thay vì một nền tảng red team automation hoàn chỉnh cho doanh nghiệp. Do đó:
 
 - Trọng tâm là minh họa kiến trúc, quy trình CI/CD, cách mô tả kịch bản bằng YAML, cơ chế cleanup, và cách đánh giá kết quả tự động.
-- Mức hoàn thành cốt lõi của đồ án là **2 kịch bản chạy end-to-end**: `T1` và `T2`.
+- Mức hoàn thành cốt lõi của đồ án là **6 kịch bản chạy end-to-end** (`T1` – `T6`), trong đó `T5` là kịch bản observable-only (sinh trực tiếp các audit-log event vì các event của GitHub Audit không được runner code-gen sinh ra), còn lại đều có sandbox target thật.
 - Các thành phần như ELK đầy đủ, Kibana dashboard, Slack/JIRA, Vault, private registry, image scanning, Zeek/Suricata được xem là **hướng mở rộng tham khảo**, không phải tiêu chí bắt buộc để chấm đạt.
 - Đánh giá detection trong bản đồ án tập trung vào **simulation observables** và **mapping logic**, thay vì yêu cầu tích hợp SIEM production-grade.
 
@@ -98,7 +92,7 @@ resource "docker_network" "redteam_sandbox" {
 
 **Bước 3 — Target workloads**
 
-Deploy các dịch vụ mục tiêu bằng Docker Compose: SSH server và mock IAM service. Các target khác như mock S3 hay dịch vụ phục vụ T3-T6 được xem là phần mở rộng.
+Deploy các dịch vụ mục tiêu bằng Docker Compose: `target-ssh` (Ubuntu/sshd cho T1), LocalStack (IAM + CloudTrail + S3 cho T2/T4), `target-web` (nginx alpine cho T3/T6), `target-redis` (redis alpine cho T3/T6). Tất cả đều là container ephemeral, được tear down sau mỗi lần chạy.
 
 **Bước 4 — Containerized simulation runners**
 
@@ -110,7 +104,7 @@ GitHub Actions thực hiện các bước: validate-approval → start sandbox t
 
 **Bước 6 — Thu thập telemetry**
 
-Filebeat được giữ như thành phần tham khảo cho hướng mở rộng telemetry. Trong phiên bản hiện tại của đồ án, evaluator chủ yếu sử dụng các observables được runner ghi nhận trực tiếp; các nguồn như Elasticsearch, Zeek hay tshark không phải điều kiện bắt buộc để demo thành công.
+Evaluator chủ yếu sử dụng các observables được runner ghi nhận trực tiếp (`results.json`). Để mở đường cho hướng mở rộng network-sensor, hai kịch bản network-detection (`T3`, `T6`) còn spawn một container `redteam/pcap-recorder` (Alpine + tcpdump, `--network=host`, `--cap-add=NET_RAW --cap-add=NET_ADMIN`) chạy song song trong suốt thời gian simulate. BPF filter giới hạn theo port range của scenario, snaplen 256 bytes, output ghi vào `artifacts/<scenario_id>-<run_id>.pcap` qua bind mount. Cách này tránh phải `setcap` hay `sudo` trên host — capability chỉ tồn tại trong container ephemeral và bị xoá khi `--rm`. Filebeat / Elasticsearch vẫn được giữ ở vai trò tham khảo cho host-log telemetry.
 
 **Bước 7 — Evaluation & mapping**
 
@@ -164,10 +158,10 @@ Thay vì chia theo tuần, đồ án được trình bày theo **8 giai đoạn 
 | **1. Xác định phạm vi và an toàn** | Xác định đây là đồ án học thuật, chỉ chạy trong sandbox/lab; xây dựng approval form, runbook, kill-switch; xác định nguyên tắc non-destructive | `docs/approval_form.md`, `docs/runbook.md`, `docs/kill_switch.md`, `README.md`, `proposal_v2_redteam.md` | **Đã hoàn thành** |
 | **2. Thiết kế kiến trúc và tổ chức repo** | Thiết kế pipeline tổng quát, cấu trúc thư mục, chuẩn Scenario-as-Code, format artifacts | `README.md`, `runners/simulate.py`, `scenarios/`, `evaluation/`, `reporting/`, `.github/workflows/` | **Đã hoàn thành** |
 | **3. Xây dựng môi trường sandbox** | Tạo môi trường cô lập cho SSH và IAM; thiết lập Docker Compose và Terraform ở mức lab; hỗ trợ teardown | `targets/docker-compose.yml`, `infra/main.tf`, `collection/filebeat.yml` | **Đã hoàn thành ở mức prototype** |
-| **4. Xây dựng simulation runners** | Xây dựng runner chung và các runner riêng cho T1, T2; chuẩn hóa observables đầu ra | `runners/simulate.py`, `runners/scenarios/t1_bruteforce.py`, `runners/scenarios/t2_priv_escalation.py`, `scenarios/T1_bruteforce_ssh.yaml`, `scenarios/T2_privilege_escalation.yaml` | **Đã hoàn thành cho T1 và T2** |
-| **5. Xây dựng mapping và evaluator** | Xây dựng expected mappings; đánh giá detection coverage; kiểm tra event sequence cho T2 | `evaluation/expected_mappings.yaml`, `evaluation/evaluate_results.py` | **Đã hoàn thành cho T1 và T2** |
+| **4. Xây dựng simulation runners** | Xây dựng runner chung và các runner riêng cho T1–T6; chuẩn hóa observables đầu ra; mở rộng evaluator hỗ trợ cả ES-query style (T1/T2) lẫn observable-type style (T3/T4/T6) và composite rule có thể cấu hình (T2/T5) | `runners/simulate.py`, `runners/scenarios/t1_bruteforce.py`, `runners/scenarios/t2_priv_escalation.py`, `runners/scenarios/t3_lateral_movement.py`, `runners/scenarios/t4_data_exfiltration.py`, `runners/scenarios/t5_ci_compromise.py`, `runners/scenarios/t6_network_recon.py`, `scenarios/T*.yaml` | **Đã hoàn thành cho T1–T6** |
+| **5. Xây dựng mapping và evaluator** | Xây dựng expected mappings cho cả 6 kịch bản; đánh giá detection coverage; kiểm tra event sequence cho T2 và T5 | `evaluation/expected_mappings.yaml`, `evaluation/evaluate_results.py` | **Đã hoàn thành cho T1–T6** |
 | **6. Xây dựng reporting và artifacts** | Sinh `results.json`, `evaluation.json`, `report.html`; chuẩn hóa nội dung báo cáo HTML | `reporting/generate_report.py`, `reporting/templates/report.html.j2`, `reporting/make_eval_stub.py`, `docs/reports/` | **Đã hoàn thành** |
-| **7. Tích hợp CI/CD và chạy thực nghiệm** | Tạo workflow on-demand và scheduled; tích hợp simulate → evaluate → report → upload artifacts → teardown; chạy thử safe-mode | `.github/workflows/redteam-on-demand.yml`, `.github/workflows/redteam-scheduled.yml`, `docs/reports/t2-safe-run-2026-04-08.md` | **Đã hoàn thành cho luồng T1/T2** |
+| **7. Tích hợp CI/CD và chạy thực nghiệm** | Tạo workflow on-demand và scheduled; tích hợp simulate → evaluate → report → upload artifacts → teardown; chạy thử safe-mode | `.github/workflows/redteam-on-demand.yml`, `.github/workflows/redteam-scheduled.yml`, `run-local.sh`, `docs/reports/t2-safe-run-2026-04-08.md` | **Đã hoàn thành cho luồng T1–T6** |
 | **8. Hoàn thiện tài liệu và định hướng mở rộng** | Đồng bộ proposal với implementation; ghi rõ phần đã làm, phần mở rộng; chuẩn bị cho báo cáo/slide/demo | `proposal_v2_redteam.md`, `docs/reports/proposal-gap-review-2026-04-08.md`, `README.md` | **Đang ở giai đoạn này** |
 
 #### Diễn giải chi tiết từng giai đoạn
@@ -210,15 +204,21 @@ Thay vì chia theo tuần, đồ án được trình bày theo **8 giai đoạn 
 - Một runner chung tải scenario YAML và gọi runner tương ứng; mỗi scenario có module riêng.
 - Phần code tương ứng:
   - `runners/simulate.py`
-  - `runners/scenarios/t1_bruteforce.py`
-  - `runners/scenarios/t2_priv_escalation.py`
-  - `scenarios/T1_bruteforce_ssh.yaml`
-  - `scenarios/T2_privilege_escalation.yaml`
+  - `runners/scenarios/t1_bruteforce.py` — Paramiko, gửi 50 SSH auth attempts
+  - `runners/scenarios/t2_priv_escalation.py` — Boto3, chuỗi `CreateRole → AttachRolePolicy → CreateAccessKey`
+  - `runners/scenarios/t3_lateral_movement.py` — `socket.create_connection` đến nhiều dịch vụ trong sandbox network
+  - `runners/scenarios/t4_data_exfiltration.py` — Boto3 S3, `CreateBucket → PutObject ×N → GetObject ×N → cleanup`
+  - `runners/scenarios/t5_ci_compromise.py` — Sinh trực tiếp `audit_log` event (`workflow_run.unauthorized_job` + `secret.read`) cùng actor
+  - `runners/scenarios/t6_network_recon.py` — Quét ma trận host × port bằng TCP connect
+  - `scenarios/T1_…yaml` … `scenarios/T6_…yaml`
 
 **Giai đoạn 5 — Xây dựng mapping và evaluator**
 
 - Mục tiêu là đánh giá được kết quả mô phỏng bằng quy tắc rõ ràng, thay vì chỉ chạy xong rồi dừng lại.
-- T2 yêu cầu evaluator kiểm tra cả event sequence, principal, và cửa sổ thời gian.
+- Evaluator hỗ trợ hai phong cách rule:
+  - **ES-query style** (T1/T2): mô tả query Elasticsearch-like (`bool.must.match`) như tài liệu detection-engineering quen thuộc.
+  - **Observable-type style** (T3/T4/T6): mapping trực tiếp theo `observable_type` + `match_field`/`match_value`, hỗ trợ `unique_field`/`min_unique` cho fan-out detection.
+- Composite rule (T2 và T5) kiểm tra cả event sequence, principal/actor, và cửa sổ thời gian thông qua các tham số có thể cấu hình trong YAML (`group_by`, `observable_types`, `required_event_names`, `window_seconds`).
 - Phần code tương ứng:
   - `evaluation/expected_mappings.yaml`
   - `evaluation/evaluate_results.py`
@@ -255,15 +255,15 @@ Thay vì chia theo tuần, đồ án được trình bày theo **8 giai đoạn 
 
 Tại thời điểm hiện tại, codebase đã **hoàn thành giai đoạn 1 đến 7** và đang ở **giai đoạn 8**:
 
-- Về triển khai kỹ thuật: đã có pipeline, sandbox, runners, evaluator, reporting, và ít nhất một lần chạy `safe-mode` thành công cho `T2`.
+- Về triển khai kỹ thuật: đã có pipeline, sandbox, runners, evaluator, reporting; cả 6 kịch bản (T1–T6) đã được kiểm chứng end-to-end ở chế độ `safe-mode` cục bộ với coverage 100% (15/15 detection checks).
 - Về tài liệu: đang hoàn thiện proposal theo đúng phạm vi học thuật, đồng bộ với repo hiện tại.
-- Về mở rộng: `T3` đến `T6` vẫn nên được giữ ở mức đề xuất, không nên trình bày như phần đã làm xong.
+- Về mở rộng: các thành phần SIEM production-grade (ELK đầy đủ, Slack/JIRA, Vault, image scanning, Zeek/Suricata) vẫn được giữ ở vị trí "hướng nghiên cứu tiếp theo".
 
 ---
 
 ## V. Các Kịch Bản
 
-Tất cả các kịch bản đều **non-destructive** — chỉ tạo ra observable telemetry mà không gây hại thực tế. Trong phạm vi bản đồ án hiện tại, `T1` và `T2` đã được triển khai end-to-end; `T3` đến `T6` là danh mục mở rộng được đề xuất để phát triển tiếp nếu còn thời gian.
+Tất cả các kịch bản đều **non-destructive** — chỉ tạo ra observable telemetry mà không gây hại thực tế. Trong phạm vi bản đồ án hiện tại, cả 6 kịch bản `T1` – `T6` đã được triển khai end-to-end (T1/T2/T3/T4/T6 dùng sandbox target thật, T5 sinh trực tiếp audit-log event vì các event của GitHub Actions audit log không phát sinh từ runner code).
 
 ---
 
@@ -296,22 +296,22 @@ Tất cả các kịch bản đều **non-destructive** — chỉ tạo ra obser
 | Trường | Nội dung |
 |---|---|
 | **MITRE TTP** | T1021 — Remote Services |
-| **Mô tả** | Từ một container, thực hiện kết nối tuần tự đến nhiều hosts trong cùng subnet để mô phỏng hành vi di chuyển ngang. |
-| **Mục tiêu phát hiện** | NIDS phát hiện một nguồn kết nối đến nhiều đích trong thời gian ngắn (nhiều connection events từ một IP). |
-| **Expected telemetry** | Zeek logs ghi ≥ 5 connection events từ cùng source IP đến các destination IPs khác nhau trong subnet trong < 3 phút. |
-| **Phương pháp** | Script Bash dùng `nc` hoặc `curl` kết nối tuần tự đến các container targets trong Docker network nội bộ. |
+| **Mô tả** | Từ một runner, thực hiện kết nối TCP tuần tự đến nhiều dịch vụ khác nhau trong sandbox network (ssh, http, redis, aws-api). Mỗi probe được ghi nhận thành observable bất kể outcome (established/refused/dns_error). |
+| **Mục tiêu phát hiện** | NIDS / flow analyzer phát hiện một source kết nối đến ≥ 4 destination hosts khác nhau trong cửa sổ ngắn. |
+| **Expected telemetry** | `connection_log` observables với pattern `remote_service_connection`; evaluator đếm unique `destination_host` ≥ 4. |
+| **Phương pháp** | Python `socket.create_connection` đến danh sách host:port trong scenario YAML; non-destructive, đóng socket ngay sau handshake. |
 
 ---
 
-### Kịch bản T4 — Data Access / Exfiltration Pattern
+### Kịch bản T4 — Data Access / Bulk S3 Read Pattern
 
 | Trường | Nội dung |
 |---|---|
 | **MITRE TTP** | T1530 — Data from Cloud Storage Object |
-| **Mô tả** | Mô phỏng hành vi đọc số lượng lớn objects từ S3 (mock) trong thời gian ngắn — đặc trưng của data staging trước khi exfil. Không có dữ liệu thật nào bị chuyển ra ngoài. |
-| **Mục tiêu phát hiện** | SIEM phát hiện bất thường về volume S3 GetObject calls vượt ngưỡng. |
-| **Expected telemetry** | S3 access logs ghi ≥ 100 `GetObject` events từ cùng principal trong 2 phút; SIEM alert `S3_BULK_READ_ANOMALY` được kích hoạt. |
-| **Phương pháp** | Script Python dùng Boto3 đọc liên tiếp các synthetic objects từ mock S3 (MinIO container), sink là internal bucket khác trong sandbox. |
+| **Mô tả** | Mô phỏng hành vi đọc số lượng lớn objects từ S3 (LocalStack) trong thời gian ngắn — đặc trưng của data staging trước khi exfil. Toàn bộ object là synthetic, bucket bị xoá khi kết thúc, không có dữ liệu thật nào bị chuyển ra ngoài. |
+| **Mục tiêu phát hiện** | SIEM phát hiện bất thường về volume `GetObject` calls vượt ngưỡng từ cùng một principal. |
+| **Expected telemetry** | `s3_access_log` observables với event_name `GetObject` ≥ 80 lần từ cùng principal; SIEM alert `S3_BULK_READ_ANOMALY` (skipped trong CI vì không có SIEM thật). |
+| **Phương pháp** | Boto3 (`endpoint_url=LocalStack`) tạo bucket → put 100 synthetic objects → get 100 lần → cleanup. |
 
 ---
 
@@ -320,10 +320,10 @@ Tất cả các kịch bản đều **non-destructive** — chỉ tạo ra obser
 | Trường | Nội dung |
 |---|---|
 | **MITRE TTP** | T1195.001 — Supply Chain Compromise: Compromise Software Dependencies |
-| **Mô tả** | Mô phỏng một CI runner chạy một job không được định nghĩa trong pipeline chính thức, và sử dụng repository secret theo cách bất thường (đọc và ghi log, không sử dụng vào mục đích thật). |
-| **Mục tiêu phát hiện** | Hệ thống phát hiện CI runner thực thi job ngoài danh sách approved workflows. |
-| **Expected telemetry** | GitHub Actions audit log ghi event `workflow_run.unauthorized_job`; secret access log ghi `SECRET_READ` từ unexpected context. |
-| **Phương pháp** | Tạo một test workflow tách biệt trong sandbox repo, trigger thủ công, validate rằng hệ thống monitoring bắt được event. |
+| **Mô tả** | Mô phỏng audit-log pattern của một CI runner chạy job không có trong danh sách approved + truy cập repository secret từ context bất thường. Đây là kịch bản observable-only — runner sinh trực tiếp 2 audit-log event mà không thực sự trigger workflow hay đọc secret thật. |
+| **Mục tiêu phát hiện** | SIEM/audit-log rule phát hiện cùng một actor thực hiện cả `workflow_run.unauthorized_job` và `secret.read` trong cửa sổ < 60s. |
+| **Expected telemetry** | 2 `audit_log` event với `event_name` lần lượt là `workflow_run.unauthorized_job` và `secret.read`, cùng `actor`, lệch nhau dưới 60s; composite rule `T5_CI_COMPROMISE_SEQUENCE` xác thực sequence. |
+| **Phương pháp** | Sinh observable theo schema GitHub Actions audit log; không invoke workflow thật, không đọc secret thật, không tạo CI artifact mới. |
 
 ---
 
@@ -332,10 +332,10 @@ Tất cả các kịch bản đều **non-destructive** — chỉ tạo ra obser
 | Trường | Nội dung |
 |---|---|
 | **MITRE TTP** | T1046 — Network Service Discovery |
-| **Mô tả** | Thực hiện port scan nội bộ trong sandbox network để kiểm tra khả năng phát hiện của NIDS. |
-| **Mục tiêu phát hiện** | Zeek/Suricata phát hiện SYN scan pattern từ một source trong subnet. |
-| **Expected telemetry** | Zeek `conn.log` ghi nhiều connection attempts đến các ports khác nhau trên cùng target; Suricata alert `SCAN SYN` được tạo. |
-| **Phương pháp** | `nmap -sS` với tham số giới hạn tốc độ (`--max-rate 50`) chỉ trong Docker network nội bộ. |
+| **Mô tả** | Thực hiện port-scan internal-only trong sandbox network: lặp ma trận `hosts × ports` và ghi outcome (open/closed/dns_error) cho mỗi probe. |
+| **Mục tiêu phát hiện** | NIDS / flow analyzer phát hiện một source touch ≥ 5 destination ports khác nhau trong cửa sổ ngắn. |
+| **Expected telemetry** | `scan_log` observables với pattern `port_probe`; evaluator yêu cầu ≥ 20 probe và ≥ 5 unique `destination_port`. |
+| **Phương pháp** | Python TCP connect đơn giản (`socket.create_connection`) thay cho `nmap -sS`; non-destructive, không banner-grab, có timeout ngắn để tránh treo. |
 
 ---
 
@@ -435,20 +435,26 @@ Trong phạm vi đồ án, **GitHub Actions Secrets** là đủ cho việc quả
 Kết thúc đồ án, nhóm sẽ bàn giao một hệ thống prototype học thuật gồm:
 
 - **Git repository** chứa toàn bộ source code: scenario definitions (YAML), simulation runner, CI pipeline configs, Terraform templates, Python evaluator và report generator.
-- **Hai kịch bản TTP hoạt động end-to-end** trong CI pipeline: `T1` và `T2`.
+- **Sáu kịch bản TTP hoạt động end-to-end** trong CI pipeline: `T1` SSH brute-force, `T2` IAM privilege escalation, `T3` lateral movement, `T4` bulk S3 read, `T5` CI compromise (observable-only), `T6` network service discovery.
 - **Chế độ chạy an toàn** trong sandbox và chế độ `dry-run` để phục vụ demo, kiểm thử, và minh họa nguyên lý hoạt động.
 - **Hệ thống báo cáo tự động** dưới dạng HTML artifact và JSON artifacts phục vụ đối chiếu kết quả.
+- **PCAP artifact** cho hai kịch bản network-sensor (`T3`, `T6`): runner spawn một container Alpine ephemeral (`redteam/pcap-recorder`, ~10MB, có sẵn `tcpdump`) với `--network=host` và `--cap-add=NET_RAW --cap-add=NET_ADMIN`, ghi `.pcap` qua bind mount vào `artifacts/`. Cách này tránh phải `setcap`/`sudo` trên host, capability chỉ tồn tại trong container và bị xoá hết khi `--rm`. File `.pcap` sau đó replay được vào Zeek/Suricata khi mở rộng.
+- **NIDS-lite analyzer** (`runners/scenarios/nids_lite.py`): sau khi scenario kết thúc, runner re-đọc chính pcap đó qua `tcpdump -nr`, regex parse SYN packets, và emit synthetic `nids_alert` observables cho hai pattern: `LATERAL_FANOUT` (≥4 unique dst services từ một source) và `PORT_SCAN` (≥5 unique dst ports từ một source). Hai rule `NIDS_LATERAL_MOVEMENT` và `NIDS_PORT_SCAN` trong `expected_mappings.yaml` nay đánh giá trên `nids_alert` observable thay vì SKIP — đóng vòng lặp từ pcap → detection mà không cần triển khai Zeek/Suricata thực thụ.
+- **Multi-run trend dashboard** (`reporting/generate_trends.py` + `templates/trends.html.j2`): mỗi evaluation được lưu vào `artifacts/history/<run_id>.json`. Script render `artifacts/trends.html` gồm trend coverage tổng thể, lịch sử per-scenario, và phát hiện regression giữa các run liền kề.
+- **Baseline regression gate** (`evaluation/check_baseline.py` + `evaluation/baseline.json`): so sánh evaluation hiện tại với baseline; CI workflow fail nếu rule từng PASS trong baseline nay FAIL/thiếu, hoặc coverage tổng thể giảm. Có flag `--update` để cập nhật baseline sau những thay đổi có chủ đích.
+- **Sigma rule export** (`evaluation/export_sigma.py` + `sigma/`): chuyển `expected_mappings.yaml` nội bộ sang Sigma YAML chuẩn industry, kèm UUID ổn định, MITRE ATT&CK tags, logsource, và `count()`/`count(unique:…)` thresholds. Output nạp được vào Sigma converter chính thức để generate rule cho Splunk/ES/Sentinel.
+- **Script `run-local.sh`** giúp tái lập toàn bộ pipeline (sandbox → simulate → evaluate → report → teardown) bằng 1 lệnh trên máy phát triển.
 - **Tài liệu học thuật** mô tả kiến trúc, phạm vi, hướng mở rộng và báo cáo thực nghiệm của từng lần chạy.
 
 ### 7.2 Chỉ số đo lường thành công
 
-| Metric | Mục tiêu |
-|---|---|
-| Detection Coverage | Các detection bắt buộc trong mapping của T1/T2 đạt ≥ 80% |
-| Sequence Validation | T2 xác nhận đủ chuỗi 3 event từ cùng principal trong cửa sổ quy định |
-| Pipeline runtime | Một run đơn lẻ hoàn thành trong thời gian phù hợp để demo trên GitHub Actions |
-| Reproducibility | Cùng kịch bản chạy lặp lại cho kết quả nhất quán trong sandbox |
-| Safety | Không tạo tác động thật ra ngoài môi trường lab/sandbox |
+| Metric | Mục tiêu | Trạng thái thực đo (run mẫu local 2026-04-27) |
+|---|---|---|
+| Detection Coverage | Tổng coverage T1–T6 ≥ 80% | **100%** (15/15 detection checks pass) |
+| Sequence Validation | T2 và T5 xác nhận đủ chuỗi event từ cùng principal/actor trong cửa sổ quy định | T2: 3 event trong 10s; T5: 2 event trong 2s |
+| Pipeline runtime | Một run đơn lẻ hoàn thành trong thời gian phù hợp để demo | ~80s end-to-end cho `--scenario all` |
+| Reproducibility | Cùng kịch bản chạy lặp lại cho kết quả nhất quán trong sandbox | Đạt qua nhiều lần chạy cục bộ |
+| Safety | Không tạo tác động thật ra ngoài môi trường lab/sandbox | Đạt — toàn bộ target nằm trong Docker network nội bộ |
 
 ### 7.3 Kiến thức và kỹ năng đạt được
 
@@ -471,19 +477,22 @@ Sau khi hoàn thành đề tài, sinh viên sẽ có khả năng:
 
 Tại thời điểm hoàn thiện bản đồ án này, repository đã đạt được các hạng mục sau:
 
-- Có 2 workflow GitHub Actions: chạy theo yêu cầu và chạy theo lịch.
-- Có 2 kịch bản đã triển khai đầy đủ: `T1` và `T2`.
-- Có evaluator tự động dựa trên `expected_mappings.yaml`.
+- Có 2 workflow GitHub Actions: chạy theo yêu cầu (`redteam-on-demand.yml`) và chạy theo lịch (`redteam-scheduled.yml`).
+- Có 6 kịch bản đã triển khai đầy đủ: `T1`, `T2`, `T3`, `T4`, `T5`, `T6`.
+- Có evaluator tự động dựa trên `expected_mappings.yaml`, hỗ trợ ES-query style (T1/T2), observable-type style (T3/T4/T6) và composite rule có thể cấu hình (T2/T5).
 - Có report generator tạo `report.html` từ kết quả đánh giá.
 - Có tài liệu vận hành cơ bản: `runbook`, `approval_form`, `kill_switch`.
-- Đã có ít nhất một lần chạy `T2` ở chế độ `safe` thành công trên GitHub Actions và được lưu báo cáo trong repo.
+- Có script `run-local.sh` chạy toàn bộ pipeline trên máy phát triển bằng 1 lệnh.
+- Đã có lần chạy `--scenario all` ở chế độ `safe` thành công với coverage 100% (15/15 detection checks pass).
 
 Các hạng mục chưa triển khai và được xem là hướng mở rộng:
 
-- T3 đến T6.
-- Tích hợp SIEM hoàn chỉnh với ELK/Kibana.
-- Slack/JIRA notification.
-- Vault, private registry, image scanning, replay mode, dashboard nhiều tuần.
+- Tích hợp SIEM hoàn chỉnh với ELK/Kibana cho real-time detection thay vì observable-based evaluation.
+- Slack/JIRA notification cho phần reporting.
+- Vault, private registry, image scanning, replay mode pcap-driven cho mọi scenario.
+- Network sensor production (Zeek/Suricata containerized) tiêu thụ PCAP với rule-set chuẩn. Bản đồ án đã có lớp NIDS-lite (Python regex trên pcap) lấp tạm vai trò detection cho T3/T6; cụm sensor thật là bước nâng cấp tự nhiên kế tiếp.
+- Cross-scenario kill-chain correlation (vd: T1 success + T2 trong cùng cửa sổ thời gian = "initial access → privilege escalation").
+- Active dashboard hiển thị baseline drift theo tuần / tháng.
 
 ---
 

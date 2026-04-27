@@ -1,0 +1,21 @@
+title: T3 Lateral Fanout
+id: 9d653ee3-00cf-581d-b583-79876eb848a9
+status: experimental
+description: Source connects to ≥4 distinct destination hosts (lateral fan-out pattern)
+references:
+- https://attack.mitre.org/techniques/T1021/
+- https://github.com/auto-redteam/scenarios/t3_lateral_movement
+author: auto-redteam (capstone)
+date: '2026-04-27'
+tags:
+- attack.lateral_movement
+- attack.t1021
+logsource:
+  category: network_connection
+detection:
+  selection:
+    pattern: remote_service_connection
+  condition: selection | count(unique:destination_host) > 3
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

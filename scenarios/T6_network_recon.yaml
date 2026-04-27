@@ -1,0 +1,48 @@
+id: t6_network_recon
+version: "1.0"
+title: Network Reconnaissance / Service Discovery (safe)
+mitre_ttp: T1046
+mitre_name: "Network Service Discovery"
+description: >
+  Perform an internal-only TCP service-discovery probe across the sandbox
+  Docker network. Iterates a host x port matrix and records each probe
+  outcome (open / closed / dns_error). Non-destructive: TCP connect only,
+  no banner-grab, no fingerprinting that could disrupt services.
+
+target:
+  service: docker-network
+  hosts:
+    - target-ssh
+    - target-web
+    - target-redis
+    - localstack
+  ports:
+    - 22
+    - 80
+    - 443
+    - 2222
+    - 4566
+    - 6379
+    - 8080
+
+parameters:
+  source_label: redteam-recon
+  connect_timeout_seconds: 1.5
+  inter_probe_delay_seconds: 0.05
+
+expected_observables:
+  - type: scan_log
+    pattern: "port_probe"
+    min_occurrences: 20
+  - type: siem_alert
+    rule_id: NIDS_PORT_SCAN
+    max_ttd_seconds: 300
+
+cleanup:
+  - description: "No cleanup needed — TCP connect probes are stateless"
+
+notes: >
+  Detection target: NIDS / flow analyzer that flags one source touching
+  many distinct (host, port) tuples in a short window. The evaluator
+  validates fan-out by counting probe events and unique destination
+  ports in the generated scan_log observables.

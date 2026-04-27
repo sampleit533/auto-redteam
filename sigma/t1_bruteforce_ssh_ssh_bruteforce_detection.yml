@@ -1,0 +1,22 @@
+title: Ssh Bruteforce Detection
+id: c28f6c75-dfdf-569b-bee5-0e9a6b7f885b
+status: experimental
+description: Failed SSH auth attempts must appear in logs
+references:
+- https://attack.mitre.org/techniques/T1110/001/
+- https://github.com/auto-redteam/scenarios/t1_bruteforce_ssh
+author: auto-redteam (capstone)
+date: '2026-04-27'
+tags:
+- attack.credential_access
+- attack.t1110.001
+logsource:
+  product: linux
+  service: auth
+detection:
+  selection:
+    message|contains: Failed password
+  condition: selection | count() > 39
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

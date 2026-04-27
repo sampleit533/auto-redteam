@@ -1,0 +1,23 @@
+title: Nids Port Scan
+id: 8fc103f8-2eb3-5453-a35c-bcb9c3d93556
+status: experimental
+description: NIDS-lite detected port-scan pattern (≥5 unique dest ports from same
+  source) in captured pcap
+references:
+- https://attack.mitre.org/techniques/T1046/
+- https://github.com/auto-redteam/scenarios/t6_network_recon
+author: auto-redteam (capstone)
+date: '2026-04-27'
+tags:
+- attack.discovery
+- attack.t1046
+logsource:
+  category: ids
+  product: auto-redteam-nids-lite
+detection:
+  selection:
+    signature: PORT_SCAN
+  condition: selection
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

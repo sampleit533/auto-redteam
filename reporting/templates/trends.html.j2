@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>auto-redteam — Detection Coverage Trends</title>
+<style>
+  body { font-family: sans-serif; max-width: 1100px; margin: 40px auto; color: #222; padding: 0 16px; }
+  h1 { color: #c0392b; }
+  h2 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 6px; margin-top: 32px; }
+  h3 { color: #2c3e50; margin-top: 20px; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 24px; font-size: 0.9em; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+  th { background: #2c3e50; color: white; }
+  tr:nth-child(even) { background: #f9f9f9; }
+  code { background: #f8f9fb; padding: 1px 4px; border-radius: 3px; font-size: 0.95em; }
+  .summary-box { background: #f0f4f8; border-left: 5px solid #2980b9; padding: 14px 18px; margin-bottom: 24px; }
+  .pass { color: #27ae60; font-weight: bold; }
+  .fail { color: #e74c3c; font-weight: bold; }
+  .bar-cell { padding: 0; vertical-align: middle; }
+  .bar-track { background: #eaeef2; height: 14px; border-radius: 3px; overflow: hidden; min-width: 80px; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, #e74c3c 0%, #f39c12 60%, #27ae60 100%); }
+  .bar-fill.full { background: #27ae60; }
+  .bar-label { display: inline-block; width: 48px; text-align: right; font-size: 0.85em; }
+  .spark { display: inline-block; vertical-align: middle; }
+  .pct { font-weight: bold; }
+  .regression-banner { background: #fff5f4; border-left: 5px solid #e74c3c; padding: 12px 18px; margin-bottom: 18px; }
+</style>
+</head>
+<body>
+
+<h1>auto-redteam — Detection Coverage Trends</h1>
+<p>Generated: {{ generated_at }} &nbsp;|&nbsp; History entries: <strong>{{ n_runs }}</strong> run(s)</p>
+
+<div class="summary-box">
+  <strong>Latest run:</strong>
+  {% set latest = overall_series[-1] %}
+  <code>{{ latest.run_id }}</code> &nbsp;|&nbsp;
+  Overall coverage:
+  <span class="pct {% if latest.coverage_pct >= 80 %}pass{% else %}fail{% endif %}">{{ latest.coverage_pct }}%</span>
+  ({{ latest.passed }}/{{ latest.total }} checks)
+</div>
+
+{% if regressions %}
+<div class="regression-banner">
+  <strong>⚠ Detection regressions detected ({{ regressions|length }}):</strong>
+  <ul>
+    {% for r in regressions %}
+    <li>
+      <code>{{ r.scenario_id }}</code>:
+      <span class="fail">{{ r.from_pct }}% → {{ r.to_pct }}%</span>
+      (between <code>{{ r.from_run }}</code> and <code>{{ r.to_run }}</code>)
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<h2>Overall coverage trend</h2>
+<table>
+  <tr>
+    <th>Run ID</th>
+    <th>Timestamp (UTC)</th>
+    <th>Overall</th>
+    <th>Coverage</th>
+    <th>Checks</th>
+  </tr>
+  {% for r in overall_series|reverse %}
+  <tr>
+    <td><code>{{ r.run_id }}</code></td>
+    <td>{{ r.ts.strftime("%Y-%m-%d %H:%M:%S") if r.ts else "—" }}</td>
+    <td class="bar-cell">
+      <div class="bar-track" style="width: 200px; display: inline-block;">
+        <div class="bar-fill {% if r.coverage_pct >= 100 %}full{% endif %}" style="width: {{ r.coverage_pct }}%;"></div>
+      </div>
+    </td>
+    <td><span class="pct {% if r.coverage_pct >= 80 %}pass{% else %}fail{% endif %}">{{ r.coverage_pct }}%</span></td>
+    <td>{{ r.passed }}/{{ r.total }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h2>Per-scenario coverage history</h2>
+{% for sid, hist in per_scenario.items() %}
+<h3><code>{{ sid }}</code> &nbsp;<small style="color:#888;">{% if hist[-1].mitre_ttp %}{{ hist[-1].mitre_ttp }}{% endif %}</small></h3>
+<table>
+  <tr>
+    <th>Run ID</th>
+    <th>Coverage</th>
+    <th>Checks passed</th>
+    <th>Coverage %</th>
+  </tr>
+  {% for h in hist|reverse %}
+  <tr>
+    <td><code>{{ h.run_id }}</code></td>
+    <td class="bar-cell">
+      <div class="bar-track" style="width: 200px; display: inline-block;">
+        <div class="bar-fill {% if h.coverage_pct >= 100 %}full{% endif %}" style="width: {{ h.coverage_pct }}%;"></div>
+      </div>
+    </td>
+    <td>{{ h.passed }}/{{ h.total }}</td>
+    <td><span class="pct {% if h.coverage_pct >= 80 %}pass{% else %}fail{% endif %}">{{ h.coverage_pct }}%</span></td>
+  </tr>
+  {% endfor %}
+</table>
+{% endfor %}
+
+<hr>
+<p style="color:#999; font-size:0.85em;">
+  Trends report — auto-redteam multi-run dashboard. History stored under <code>artifacts/history/</code>.
+</p>
+</body>
+</html>

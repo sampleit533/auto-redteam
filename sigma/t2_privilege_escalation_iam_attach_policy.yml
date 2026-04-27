@@ -1,0 +1,23 @@
+title: Iam Attach Policy
+id: 0c501514-0b7d-5a72-9212-aa3bb3106a38
+status: experimental
+description: AttachRolePolicy event must appear in CloudTrail logs
+references:
+- https://attack.mitre.org/techniques/T1078/004/
+- https://github.com/auto-redteam/scenarios/t2_privilege_escalation
+author: auto-redteam (capstone)
+date: '2026-04-27'
+tags:
+- attack.persistence
+- attack.privilege_escalation
+- attack.t1078.004
+logsource:
+  product: aws
+  service: cloudtrail
+detection:
+  selection:
+    EventName: AttachRolePolicy
+  condition: selection
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

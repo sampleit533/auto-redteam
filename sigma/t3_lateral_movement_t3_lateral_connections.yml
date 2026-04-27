@@ -1,0 +1,21 @@
+title: T3 Lateral Connections
+id: ebf73ee7-6822-5e96-8c3f-cd128a201496
+status: experimental
+description: ≥4 lateral connection probes recorded by the runner
+references:
+- https://attack.mitre.org/techniques/T1021/
+- https://github.com/auto-redteam/scenarios/t3_lateral_movement
+author: auto-redteam (capstone)
+date: '2026-04-27'
+tags:
+- attack.lateral_movement
+- attack.t1021
+logsource:
+  category: network_connection
+detection:
+  selection:
+    pattern: remote_service_connection
+  condition: selection | count() > 3
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

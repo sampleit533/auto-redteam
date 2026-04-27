@@ -1,0 +1,1046 @@
+{
+  "run_id": "full-nids-1777283233",
+  "evaluated_at": "2026-04-27T09:51:36.030011+00:00",
+  "summary": {
+    "scenarios_evaluated": 6,
+    "total_detection_checks": 17,
+    "passed": 17,
+    "overall_coverage_pct": 100.0
+  },
+  "scenarios": [
+    {
+      "scenario_id": "t1_bruteforce_ssh",
+      "mitre_ttp": "T1110.001",
+      "status": "success",
+      "detection_coverage_pct": 100.0,
+      "passed": 2,
+      "total": 2,
+      "detections": [
+        {
+          "rule_id": "SSH_BRUTEFORCE_DETECTION",
+          "description": "Failed SSH auth attempts must appear in logs",
+          "hit_count": 49,
+          "min_hits": 40,
+          "passed": true
+        },
+        {
+          "rule_id": "SSH_SUCCESS_AFTER_BRUTEFORCE",
+          "description": "Successful login after brute-force must be logged",
+          "hit_count": 1,
+          "min_hits": 1,
+          "passed": true
+        },
+        {
+          "rule_id": "SSH_SIEM_ALERT",
+          "description": "SIEM alert SSH_BRUTEFORCE fired (requires live Elasticsearch)",
+          "status": "skipped",
+          "reason": "Requires live SIEM (not available in CI)",
+          "passed": null
+        }
+      ],
+      "sim_start": "2026-04-27T09:47:14.201164+00:00",
+      "sim_end": "2026-04-27T09:51:05.108078+00:00",
+      "details": {
+        "failed_attempts": 49,
+        "successful_login": true,
+        "target_host": "localhost",
+        "target_port": 2222
+      },
+      "event_sequence": []
+    },
+    {
+      "scenario_id": "t2_privilege_escalation",
+      "mitre_ttp": "T1078.004",
+      "status": "success",
+      "detection_coverage_pct": 100.0,
+      "passed": 4,
+      "total": 4,
+      "detections": [
+        {
+          "rule_id": "IAM_CREATE_ROLE",
+          "description": "CreateRole event must appear in CloudTrail logs",
+          "hit_count": 1,
+          "min_hits": 1,
+          "passed": true
+        },
+        {
+          "rule_id": "IAM_ATTACH_POLICY",
+          "description": "AttachRolePolicy event must appear in CloudTrail logs",
+          "hit_count": 1,
+          "min_hits": 1,
+          "passed": true
+        },
+        {
+          "rule_id": "IAM_CREATE_KEY",
+          "description": "CreateAccessKey event must appear in CloudTrail logs",
+          "hit_count": 1,
+          "min_hits": 1,
+          "passed": true
+        },
+        {
+          "rule_id": "IAM_PRIVILEGE_ESCALATION_SEQUENCE",
+          "description": "All 3 events (CreateRole+AttachPolicy+CreateKey) from same principal within 5 min",
+          "composite": true,
+          "requires": [
+            "IAM_CREATE_ROLE",
+            "IAM_ATTACH_POLICY",
+            "IAM_CREATE_KEY"
+          ],
+          "group_by": "principal",
+          "principal": "full-nids-principal",
+          "sequence_window_seconds": 12.957,
+          "passed": true
+        }
+      ],
+      "sim_start": "2026-04-27T09:51:05.226408+00:00",
+      "sim_end": "2026-04-27T09:51:18.833482+00:00",
+      "details": {
+        "events_generated": [
+          "CreateAccessKey",
+          "CreateRole",
+          "AttachRolePolicy"
+        ],
+        "endpoint": "http://localhost:4566",
+        "run_id": "full-nids-1777283233",
+        "principal": "full-nids-principal",
+        "role_name": "redteam-test-role-full-nids-1777283233",
+        "user_name": "redteam-user-full-nids-1777283233",
+        "sequence_window_seconds": 300
+      },
+      "event_sequence": [
+        {
+          "event_name": "CreateRole",
+          "principal": "full-nids-principal",
+          "resource": "redteam-test-role-full-nids-1777283233",
+          "event_time": 1777283465.8579373,
+          "observable_type": "cloudtrail_log"
+        },
+        {
+          "event_name": "AttachRolePolicy",
+          "principal": "full-nids-principal",
+          "resource": "arn:aws:iam::aws:policy/ReadOnlyAccess",
+          "event_time": 1777283473.7994857,
+          "observable_type": "cloudtrail_log"
+        },
+        {
+          "event_name": "CreateAccessKey",
+          "principal": "full-nids-principal",
+          "resource": "redteam-user-full-nids-1777283233",
+          "event_time": 1777283478.814461,
+          "observable_type": "cloudtrail_log"
+        }
+      ]
+    },
+    {
+      "scenario_id": "t3_lateral_movement",
+      "mitre_ttp": "T1021",
+      "status": "success",
+      "detection_coverage_pct": 100.0,
+      "passed": 3,
+      "total": 3,
+      "detections": [
+        {
+          "rule_id": "T3_LATERAL_CONNECTIONS",
+          "description": "\u22654 lateral connection probes recorded by the runner",
+          "hit_count": 5,
+          "min_hits": 4,
+          "passed": true
+        },
+        {
+          "rule_id": "T3_LATERAL_FANOUT",
+          "description": "Source connects to \u22654 distinct destination hosts (lateral fan-out pattern)",
+          "hit_count": 4,
+          "min_hits": 4,
+          "unique_field": "destination_host",
+          "passed": true
+        },
+        {
+          "rule_id": "NIDS_LATERAL_MOVEMENT",
+          "description": "NIDS-lite detected lateral-movement fan-out pattern in captured pcap",
+          "hit_count": 1,
+          "min_hits": 1,
+          "passed": true
+        }
+      ],
+      "sim_start": "2026-04-27T09:51:18.837249+00:00",
+      "sim_end": "2026-04-27T09:51:24.384385+00:00",
+      "details": {
+        "source": "redteam-runner",
+        "destinations_attempted": 5,
+        "unique_destination_hosts": 4,
+        "established": 4,
+        "refused": 1,
+        "other": 0,
+        "pcap_artifact": "/home/robbert/redteam_auto/auto-redteam/artifacts/t3_lateral_movement-full-nids-1777283233.pcap",
+        "nids_alerts_emitted": 1
+      },
+      "event_sequence": []
+    },
+    {
+      "scenario_id": "t4_data_exfiltration",
+      "mitre_ttp": "T1530",
+      "status": "success",
+      "detection_coverage_pct": 100.0,
+      "passed": 2,
+      "total": 2,
+      "detections": [
+        {
+          "rule_id": "T4_S3_BULK_GET",
+          "description": "\u226580 GetObject events recorded in the simulation window",
+          "hit_count": 100,
+          "min_hits": 80,
+          "passed": true
+        },
+        {
+          "rule_id": "T4_S3_BULK_PRINCIPAL",
+          "description": "Bulk reads attributed to a single principal (volume anomaly precondition)",
+          "hit_count": 1,
+          "min_hits": 1,
+          "unique_field": "principal",
+          "passed": true
+        },
+        {
+          "rule_id": "S3_BULK_READ_ANOMALY",
+          "description": "SIEM bulk-read anomaly alert (requires live SIEM)",
+          "status": "skipped",
+          "reason": "Requires live SIEM (not available in CI)",
+          "passed": null
+        }
+      ],
+      "sim_start": "2026-04-27T09:51:24.388164+00:00",
+      "sim_end": "2026-04-27T09:51:31.016400+00:00",
+      "details": {
+        "endpoint": "http://localhost:4566",
+        "bucket": "redteam-test-bucket-full-nids-1777283233",
+        "principal": "full-nids-principal",
+        "objects_populated": 100,
+        "successful_reads": 100,
+        "failed_reads": 0
+      },
+      "event_sequence": [
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.2037144,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.2587953,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.3135273,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.368474,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.4247944,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.4797142,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.5339365,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.5880618,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.6428611,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.6970181,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.7512348,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.8055444,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.8599355,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.914651,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283485.9691005,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.024365,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.0788736,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.1340442,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.1892505,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.2444317,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.2990026,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.3535883,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.4089053,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.4635043,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.5180864,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.5728924,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.6270936,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.6815677,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.735773,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.790108,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.8440583,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.8986084,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283486.952915,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.0072916,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.0617251,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.1159492,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.170705,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.2260873,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.2806559,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.3349893,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.3893554,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.443886,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.4986575,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.5530841,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.6074438,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.6619315,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.7168765,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.7712178,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.82535,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.8795946,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.9344628,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283487.9884303,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.042729,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.0968277,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.151669,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.2063994,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.261117,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.3158276,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.3705575,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.4247532,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.479364,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.533778,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.588555,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.643045,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.698288,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.752813,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.8075845,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.8623912,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.9168465,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283488.9708982,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.025137,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.0800722,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.1344595,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.1887617,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.2433121,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.2976024,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.3533843,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.4088354,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.4638162,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.518706,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.572994,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.627622,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.6820219,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.7364666,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.7910662,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.8463564,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.900677,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283489.9556422,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283490.010647,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283490.0656297,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283490.120085,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283490.1744478,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283490.2292993,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283490.2837758,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283490.3383045,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283490.3928385,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283490.4473214,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283490.5014918,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283490.5562935,
+          "observable_type": "s3_access_log"
+        },
+        {
+          "event_name": "GetObject",
+          "principal": "full-nids-principal",
+          "resource": null,
+          "event_time": 1777283490.6110423,
+          "observable_type": "s3_access_log"
+        }
+      ]
+    },
+    {
+      "scenario_id": "t5_ci_compromise",
+      "mitre_ttp": "T1195.001",
+      "status": "success",
+      "detection_coverage_pct": 100.0,
+      "passed": 3,
+      "total": 3,
+      "detections": [
+        {
+          "rule_id": "T5_UNAUTH_JOB",
+          "description": "Audit log shows a workflow run that is not in the approved list",
+          "hit_count": 1,
+          "min_hits": 1,
+          "passed": true
+        },
+        {
+          "rule_id": "T5_SECRET_READ",
+          "description": "Audit log shows a repository secret read in unusual context",
+          "hit_count": 1,
+          "min_hits": 1,
+          "passed": true
+        },
+        {
+          "rule_id": "CI_UNAUTHORIZED_WORKFLOW",
+          "description": "Audit-log SIEM alert for unauthorized CI workflow",
+          "status": "skipped",
+          "reason": "Requires live SIEM (not available in CI)",
+          "passed": null
+        },
+        {
+          "rule_id": "T5_CI_COMPROMISE_SEQUENCE",
+          "description": "Same actor performs unauthorized job and secret read within 60s",
+          "composite": true,
+          "requires": [
+            "T5_UNAUTH_JOB",
+            "T5_SECRET_READ"
+          ],
+          "group_by": "actor",
+          "principal": "full-nids-actor",
+          "sequence_window_seconds": 2.0,
+          "passed": true
+        }
+      ],
+      "sim_start": "2026-04-27T09:51:31.019652+00:00",
+      "sim_end": "2026-04-27T09:51:33.019780+00:00",
+      "details": {
+        "org": "redteam-sandbox-org",
+        "repo": "redteam-sandbox-repo",
+        "actor": "full-nids-actor",
+        "approved_workflows": [
+          ".github/workflows/redteam-on-demand.yml",
+          ".github/workflows/redteam-scheduled.yml"
+        ],
+        "unauthorized_workflow": ".github/workflows/exfil-test.yml",
+        "secret_name": "REDTEAM_DEPLOY_KEY",
+        "trigger_context": "manual-trigger-from-fork"
+      },
+      "event_sequence": [
+        {
+          "event_name": "workflow_run.unauthorized_job",
+          "principal": "full-nids-actor",
+          "resource": null,
+          "event_time": 1777283491.0196817,
+          "observable_type": "audit_log"
+        },
+        {
+          "event_name": "secret.read",
+          "principal": "full-nids-actor",
+          "resource": null,
+          "event_time": 1777283493.0197644,
+          "observable_type": "audit_log"
+        }
+      ]
+    },
+    {
+      "scenario_id": "t6_network_recon",
+      "mitre_ttp": "T1046",
+      "status": "success",
+      "detection_coverage_pct": 100.0,
+      "passed": 3,
+      "total": 3,
+      "detections": [
+        {
+          "rule_id": "T6_PORT_PROBES",
+          "description": "\u226520 port probes recorded in scan log",
+          "hit_count": 28,
+          "min_hits": 20,
+          "passed": true
+        },
+        {
+          "rule_id": "T6_PORT_FANOUT",
+          "description": "Probes target \u22655 distinct destination ports (scan fan-out pattern)",
+          "hit_count": 7,
+          "min_hits": 5,
+          "unique_field": "destination_port",
+          "passed": true
+        },
+        {
+          "rule_id": "NIDS_PORT_SCAN",
+          "description": "NIDS-lite detected port-scan pattern (\u22655 unique dest ports from same source) in captured pcap",
+          "hit_count": 1,
+          "min_hits": 1,
+          "passed": true
+        }
+      ],
+      "sim_start": "2026-04-27T09:51:33.022018+00:00",
+      "sim_end": "2026-04-27T09:51:35.851270+00:00",
+      "details": {
+        "source": "redteam-recon",
+        "hosts_scanned": 4,
+        "ports_per_host": 7,
+        "total_probes": 28,
+        "unique_destination_ports": 7,
+        "unique_destination_hosts": 4,
+        "open_count": 20,
+        "closed_count": 8,
+        "other_count": 0,
+        "pcap_artifact": "/home/robbert/redteam_auto/auto-redteam/artifacts/t6_network_recon-full-nids-1777283233.pcap",
+        "nids_alerts_emitted": 1
+      },
+      "event_sequence": []
+    }
+  ]
+}

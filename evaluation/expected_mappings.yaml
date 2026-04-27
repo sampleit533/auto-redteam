@@ -73,3 +73,102 @@ mappings:
         requires: [IAM_CREATE_ROLE, IAM_ATTACH_POLICY, IAM_CREATE_KEY]
         window_seconds: 300
     max_ttd_seconds: 300
+
+  - scenario_id: t3_lateral_movement
+    mitre_ttp: T1021
+    required_detections:
+      - rule_id: T3_LATERAL_CONNECTIONS
+        observable_type: connection_log
+        match_field: pattern
+        match_value: remote_service_connection
+        min_hits: 4
+        description: "≥4 lateral connection probes recorded by the runner"
+      - rule_id: T3_LATERAL_FANOUT
+        observable_type: connection_log
+        match_field: pattern
+        match_value: remote_service_connection
+        unique_field: destination_host
+        min_unique: 4
+        description: "Source connects to ≥4 distinct destination hosts (lateral fan-out pattern)"
+      - rule_id: NIDS_LATERAL_MOVEMENT
+        observable_type: nids_alert
+        match_field: signature
+        match_value: LATERAL_FANOUT
+        min_hits: 1
+        description: "NIDS-lite detected lateral-movement fan-out pattern in captured pcap"
+    max_ttd_seconds: 180
+
+  - scenario_id: t4_data_exfiltration
+    mitre_ttp: T1530
+    required_detections:
+      - rule_id: T4_S3_BULK_GET
+        observable_type: s3_access_log
+        match_field: event_name
+        match_value: GetObject
+        min_hits: 80
+        description: "≥80 GetObject events recorded in the simulation window"
+      - rule_id: T4_S3_BULK_PRINCIPAL
+        observable_type: s3_access_log
+        match_field: event_name
+        match_value: GetObject
+        unique_field: principal
+        min_unique: 1
+        description: "Bulk reads attributed to a single principal (volume anomaly precondition)"
+      - rule_id: S3_BULK_READ_ANOMALY
+        type: siem_alert
+        description: "SIEM bulk-read anomaly alert (requires live SIEM)"
+        min_hits: 1
+    max_ttd_seconds: 180
+
+  - scenario_id: t5_ci_compromise
+    mitre_ttp: T1195.001
+    required_detections:
+      - rule_id: T5_UNAUTH_JOB
+        observable_type: audit_log
+        match_field: event_name
+        match_value: workflow_run.unauthorized_job
+        min_hits: 1
+        description: "Audit log shows a workflow run that is not in the approved list"
+      - rule_id: T5_SECRET_READ
+        observable_type: audit_log
+        match_field: event_name
+        match_value: secret.read
+        min_hits: 1
+        description: "Audit log shows a repository secret read in unusual context"
+      - rule_id: T5_CI_COMPROMISE_SEQUENCE
+        composite: true
+        requires: [T5_UNAUTH_JOB, T5_SECRET_READ]
+        group_by: actor
+        observable_types: [audit_log]
+        required_event_names: [workflow_run.unauthorized_job, secret.read]
+        window_seconds: 60
+        description: "Same actor performs unauthorized job and secret read within 60s"
+      - rule_id: CI_UNAUTHORIZED_WORKFLOW
+        type: siem_alert
+        description: "Audit-log SIEM alert for unauthorized CI workflow"
+        min_hits: 1
+    max_ttd_seconds: 600
+
+  - scenario_id: t6_network_recon
+    mitre_ttp: T1046
+    required_detections:
+      - rule_id: T6_PORT_PROBES
+        observable_type: scan_log
+        match_field: pattern
+        match_value: port_probe
+        min_hits: 20
+        description: "≥20 port probes recorded in scan log"
+      - rule_id: T6_PORT_FANOUT
+        observable_type: scan_log
+        match_field: pattern
+        match_value: port_probe
+        unique_field: destination_port
+        min_unique: 5
+        description: "Probes target ≥5 distinct destination ports (scan fan-out pattern)"
+      - rule_id: NIDS_PORT_SCAN
+        observable_type: nids_alert
+        match_field: signature
+        match_value: PORT_SCAN
+        min_hits: 1
+        description: "NIDS-lite detected port-scan pattern (≥5 unique dest ports from same source) in captured pcap"
+    max_ttd_seconds: 300

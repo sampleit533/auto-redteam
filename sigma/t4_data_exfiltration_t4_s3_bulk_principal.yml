@@ -1,0 +1,22 @@
+title: T4 S3 Bulk Principal
+id: e150317d-a647-5027-82ad-f5341fe113ce
+status: experimental
+description: Bulk reads attributed to a single principal (volume anomaly precondition)
+references:
+- https://attack.mitre.org/techniques/T1530/
+- https://github.com/auto-redteam/scenarios/t4_data_exfiltration
+author: auto-redteam (capstone)
+date: '2026-04-27'
+tags:
+- attack.collection
+- attack.t1530
+logsource:
+  product: aws
+  service: s3
+detection:
+  selection:
+    event_name: GetObject
+  condition: selection | count(unique:principal) > 0
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium
