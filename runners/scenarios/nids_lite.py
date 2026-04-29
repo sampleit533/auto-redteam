@@ -105,29 +105,30 @@ def detect_port_scan(pcap_path: str, run_id: str,
 def detect_lateral_fanout(pcap_path: str, run_id: str,
                           min_unique_hosts: int = 4) -> list:
     """Emit nids_alert observables when a single source reaches many distinct
-    destination hosts — characteristic of lateral-movement spread."""
-    by_src = defaultdict(lambda: {"hosts": set()})
+    destination services — characteristic of lateral-movement spread.
+
+    A "service" is counted as a (dst_ip, dst_port) pair so the heuristic works
+    both when targets live on separate hosts (docker-compose: each container
+    has its own bridge IP) and when they share an address but differ by port
+    (CI runner: all targets bound to 127.0.0.1). Both shapes represent the
+    same T1021 behavior — attacker touching multiple remote services."""
+    by_src = defaultdict(lambda: {"services": set()})
     for src, sport, dst, dport, flags in _read_pcap(pcap_path):
         if not _is_initial_syn(flags):
             continue
         if _exclude_self_src(src):
             continue
-        # Skip "self-connect" loopback patterns where dst == src (rare)
-        if dst == src and src.startswith("127."):
-            # Loopback fan-out across many ports counts as scan, not lateral.
-            # We still record dst for fan-out so set logic stays consistent.
-            pass
-        by_src[src]["hosts"].add(dst)
+        by_src[src]["services"].add((dst, dport))
 
     alerts = []
     for src, rec in sorted(by_src.items()):
-        if len(rec["hosts"]) >= min_unique_hosts:
+        if len(rec["services"]) >= min_unique_hosts:
             alerts.append({
                 "type": "nids_alert",
                 "signature": "LATERAL_FANOUT",
                 "rule": "nids-lite/lateral-fanout",
                 "source_ip": src,
-                "unique_dest_hosts": len(rec["hosts"]),
+                "unique_dest_hosts": len(rec["services"]),
                 "min_threshold": min_unique_hosts,
                 "event_time": time.time(),
                 "run_id": run_id,
