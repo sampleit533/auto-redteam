@@ -104,33 +104,45 @@ def detect_port_scan(pcap_path: str, run_id: str,
 
 def detect_lateral_fanout(pcap_path: str, run_id: str,
                           min_unique_hosts: int = 4) -> list:
-    """Emit nids_alert observables when a single source reaches many distinct
-    destination services — characteristic of lateral-movement spread.
+    """Emit nids_alert observables when the captured traffic shows fan-out
+    to many distinct destination services — characteristic of T1021 lateral
+    movement.
 
-    A "service" is counted as a (dst_ip, dst_port) pair so the heuristic works
-    both when targets live on separate hosts (docker-compose: each container
-    has its own bridge IP) and when they share an address but differ by port
-    (CI runner: all targets bound to 127.0.0.1). Both shapes represent the
-    same T1021 behavior — attacker touching multiple remote services."""
+    A "service" is a (dst_ip, dst_port) pair so the heuristic works both for
+    docker-compose (each target has its own bridge IP) and for a shared
+    loopback (CI runner: all targets bound to 127.0.0.1, distinguished only
+    by port).
+
+    We also aggregate across source IPs in the same pcap. Reason: docker port
+    mappings DNAT a single client connection so it appears twice on `-i any`
+    captures (once on lo, once on the bridge) with different src IPs. In a
+    single-host sandbox these are the same logical attacker; we report the
+    union and attribute the alert to the source IP that contributed the most
+    services."""
     by_src = defaultdict(lambda: {"services": set()})
+    all_services: set = set()
     for src, sport, dst, dport, flags in _read_pcap(pcap_path):
         if not _is_initial_syn(flags):
             continue
         if _exclude_self_src(src):
             continue
-        by_src[src]["services"].add((dst, dport))
+        svc = (dst, dport)
+        by_src[src]["services"].add(svc)
+        all_services.add(svc)
 
-    alerts = []
-    for src, rec in sorted(by_src.items()):
-        if len(rec["services"]) >= min_unique_hosts:
-            alerts.append({
-                "type": "nids_alert",
-                "signature": "LATERAL_FANOUT",
-                "rule": "nids-lite/lateral-fanout",
-                "source_ip": src,
-                "unique_dest_hosts": len(rec["services"]),
-                "min_threshold": min_unique_hosts,
-                "event_time": time.time(),
-                "run_id": run_id,
-            })
-    return alerts
+    if len(all_services) < min_unique_hosts or not by_src:
+        return []
+
+    top_src, top_rec = max(
+        by_src.items(), key=lambda kv: len(kv[1]["services"])
+    )
+    return [{
+        "type": "nids_alert",
+        "signature": "LATERAL_FANOUT",
+        "rule": "nids-lite/lateral-fanout",
+        "source_ip": top_src,
+        "unique_dest_hosts": len(all_services),
+        "min_threshold": min_unique_hosts,
+        "event_time": time.time(),
+        "run_id": run_id,
+    }]
