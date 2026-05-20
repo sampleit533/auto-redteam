@@ -172,3 +172,32 @@ mappings:
         min_hits: 1
         description: "NIDS-lite detected port-scan pattern (≥5 unique dest ports from same source) in captured pcap"
     max_ttd_seconds: 300
+
+  - scenario_id: t7_log4shell_probe
+    mitre_ttp: T1190
+    required_detections:
+      - rule_id: T7_LOG4SHELL_PROBES
+        observable_type: http_request
+        match_field: pattern
+        match_value: log4shell_probe
+        min_hits: 5
+        description: "≥5 Log4Shell probe HTTP requests sent by the runner"
+      - rule_id: SNORT_LOG4SHELL_GENERIC
+        observable_type: snort_alert
+        match_field: rule_id
+        match_value: 1000001
+        min_hits: 1
+        description: "Snort fired generic ${jndi:* signature on the captured pcap (CVE-2021-44228)"
+      - rule_id: SNORT_LOG4SHELL_LDAP
+        observable_type: snort_alert
+        match_field: rule_id
+        match_value: 1000002
+        min_hits: 1
+        description: "Snort fired LDAP-specific ${jndi:ldap:// signature on the captured pcap"
+      - rule_id: SNORT_LOG4SHELL_RMI
+        observable_type: snort_alert
+        match_field: rule_id
+        match_value: 1000003
+        min_hits: 1
+        description: "Snort fired RMI-specific ${jndi:rmi:// signature on the captured pcap"
+    max_ttd_seconds: 60

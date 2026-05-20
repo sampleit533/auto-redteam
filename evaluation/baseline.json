@@ -1,10 +1,10 @@
 {
-  "run_id": "full-nids-1777283233",
-  "evaluated_at": "2026-04-27T09:51:36.030011+00:00",
+  "run_id": "local-20260520-184621",
+  "evaluated_at": "2026-05-20T11:50:27.412493+00:00",
   "summary": {
-    "scenarios_evaluated": 6,
-    "total_detection_checks": 17,
-    "passed": 17,
+    "scenarios_evaluated": 7,
+    "total_detection_checks": 21,
+    "passed": 21,
     "overall_coverage_pct": 100.0
   },
   "scenarios": [
@@ -38,8 +38,8 @@
           "passed": null
         }
       ],
-      "sim_start": "2026-04-27T09:47:14.201164+00:00",
-      "sim_end": "2026-04-27T09:51:05.108078+00:00",
+      "sim_start": "2026-05-20T11:46:32.915460+00:00",
+      "sim_end": "2026-05-20T11:49:54.399998+00:00",
       "details": {
         "failed_attempts": 49,
         "successful_login": true,
@@ -87,46 +87,46 @@
             "IAM_CREATE_KEY"
           ],
           "group_by": "principal",
-          "principal": "full-nids-principal",
-          "sequence_window_seconds": 12.957,
+          "principal": "local-runner-local-20260520-184621",
+          "sequence_window_seconds": 10.021,
           "passed": true
         }
       ],
-      "sim_start": "2026-04-27T09:51:05.226408+00:00",
-      "sim_end": "2026-04-27T09:51:18.833482+00:00",
+      "sim_start": "2026-05-20T11:49:54.514072+00:00",
+      "sim_end": "2026-05-20T11:50:07.624648+00:00",
       "details": {
         "events_generated": [
+          "AttachRolePolicy",
           "CreateAccessKey",
-          "CreateRole",
-          "AttachRolePolicy"
+          "CreateRole"
         ],
         "endpoint": "http://localhost:4566",
-        "run_id": "full-nids-1777283233",
-        "principal": "full-nids-principal",
-        "role_name": "redteam-test-role-full-nids-1777283233",
-        "user_name": "redteam-user-full-nids-1777283233",
+        "run_id": "local-20260520-184621",
+        "principal": "local-runner-local-20260520-184621",
+        "role_name": "redteam-test-role-local-20260520-184621",
+        "user_name": "redteam-user-local-20260520-184621",
         "sequence_window_seconds": 300
       },
       "event_sequence": [
         {
           "event_name": "CreateRole",
-          "principal": "full-nids-principal",
-          "resource": "redteam-test-role-full-nids-1777283233",
-          "event_time": 1777283465.8579373,
+          "principal": "local-runner-local-20260520-184621",
+          "resource": "redteam-test-role-local-20260520-184621",
+          "event_time": 1779277797.5845864,
           "observable_type": "cloudtrail_log"
         },
         {
           "event_name": "AttachRolePolicy",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": "arn:aws:iam::aws:policy/ReadOnlyAccess",
-          "event_time": 1777283473.7994857,
+          "event_time": 1779277802.590543,
           "observable_type": "cloudtrail_log"
         },
         {
           "event_name": "CreateAccessKey",
-          "principal": "full-nids-principal",
-          "resource": "redteam-user-full-nids-1777283233",
-          "event_time": 1777283478.814461,
+          "principal": "local-runner-local-20260520-184621",
+          "resource": "redteam-user-local-20260520-184621",
+          "event_time": 1779277807.6060183,
           "observable_type": "cloudtrail_log"
         }
       ]
@@ -162,8 +162,8 @@
           "passed": true
         }
       ],
-      "sim_start": "2026-04-27T09:51:18.837249+00:00",
-      "sim_end": "2026-04-27T09:51:24.384385+00:00",
+      "sim_start": "2026-05-20T11:50:07.628498+00:00",
+      "sim_end": "2026-05-20T11:50:13.188484+00:00",
       "details": {
         "source": "redteam-runner",
         "destinations_attempted": 5,
@@ -171,7 +171,7 @@
         "established": 4,
         "refused": 1,
         "other": 0,
-        "pcap_artifact": "/home/robbert/redteam_auto/auto-redteam/artifacts/t3_lateral_movement-full-nids-1777283233.pcap",
+        "pcap_artifact": "/home/robbert/redteam_auto/auto-redteam/artifacts/t3_lateral_movement-local-20260520-184621.pcap",
         "nids_alerts_emitted": 1
       },
       "event_sequence": []
@@ -207,12 +207,12 @@
           "passed": null
         }
       ],
-      "sim_start": "2026-04-27T09:51:24.388164+00:00",
-      "sim_end": "2026-04-27T09:51:31.016400+00:00",
+      "sim_start": "2026-05-20T11:50:13.191952+00:00",
+      "sim_end": "2026-05-20T11:50:19.675236+00:00",
       "details": {
         "endpoint": "http://localhost:4566",
-        "bucket": "redteam-test-bucket-full-nids-1777283233",
-        "principal": "full-nids-principal",
+        "bucket": "redteam-test-bucket-local-20260520-184621",
+        "principal": "local-runner-local-20260520-184621",
         "objects_populated": 100,
         "successful_reads": 100,
         "failed_reads": 0
@@ -220,702 +220,702 @@
       "event_sequence": [
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.2037144,
+          "event_time": 1779277813.995097,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.2587953,
+          "event_time": 1779277814.0507712,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.3135273,
+          "event_time": 1779277814.1063757,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.368474,
+          "event_time": 1779277814.1615696,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.4247944,
+          "event_time": 1779277814.216005,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.4797142,
+          "event_time": 1779277814.2705896,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.5339365,
+          "event_time": 1779277814.326758,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.5880618,
+          "event_time": 1779277814.3806486,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.6428611,
+          "event_time": 1779277814.434693,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.6970181,
+          "event_time": 1779277814.4887807,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.7512348,
+          "event_time": 1779277814.5427873,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.8055444,
+          "event_time": 1779277814.5966232,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.8599355,
+          "event_time": 1779277814.650811,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.914651,
+          "event_time": 1779277814.7048924,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283485.9691005,
+          "event_time": 1779277814.7589946,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.024365,
+          "event_time": 1779277814.8132682,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.0788736,
+          "event_time": 1779277814.8676195,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.1340442,
+          "event_time": 1779277814.9215803,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.1892505,
+          "event_time": 1779277814.9760976,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.2444317,
+          "event_time": 1779277815.0300093,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.2990026,
+          "event_time": 1779277815.0843008,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.3535883,
+          "event_time": 1779277815.138269,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.4089053,
+          "event_time": 1779277815.1922948,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.4635043,
+          "event_time": 1779277815.2465742,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.5180864,
+          "event_time": 1779277815.3008873,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.5728924,
+          "event_time": 1779277815.3559656,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.6270936,
+          "event_time": 1779277815.4098039,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.6815677,
+          "event_time": 1779277815.4639964,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.735773,
+          "event_time": 1779277815.5182018,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.790108,
+          "event_time": 1779277815.5735936,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.8440583,
+          "event_time": 1779277815.627937,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.8986084,
+          "event_time": 1779277815.6839936,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283486.952915,
+          "event_time": 1779277815.7399921,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.0072916,
+          "event_time": 1779277815.7953107,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.0617251,
+          "event_time": 1779277815.849248,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.1159492,
+          "event_time": 1779277815.9038832,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.170705,
+          "event_time": 1779277815.95825,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.2260873,
+          "event_time": 1779277816.012253,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.2806559,
+          "event_time": 1779277816.0667975,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.3349893,
+          "event_time": 1779277816.120506,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.3893554,
+          "event_time": 1779277816.1743777,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.443886,
+          "event_time": 1779277816.2285252,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.4986575,
+          "event_time": 1779277816.2826643,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.5530841,
+          "event_time": 1779277816.3367722,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.6074438,
+          "event_time": 1779277816.390725,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.6619315,
+          "event_time": 1779277816.4446445,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.7168765,
+          "event_time": 1779277816.4990578,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.7712178,
+          "event_time": 1779277816.553009,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.82535,
+          "event_time": 1779277816.6067624,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.8795946,
+          "event_time": 1779277816.6606822,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.9344628,
+          "event_time": 1779277816.7145643,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283487.9884303,
+          "event_time": 1779277816.7689295,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.042729,
+          "event_time": 1779277816.822912,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.0968277,
+          "event_time": 1779277816.8771958,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.151669,
+          "event_time": 1779277816.9314435,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.2063994,
+          "event_time": 1779277816.9854796,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.261117,
+          "event_time": 1779277817.0397851,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.3158276,
+          "event_time": 1779277817.0940585,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.3705575,
+          "event_time": 1779277817.1477106,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.4247532,
+          "event_time": 1779277817.2018757,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.479364,
+          "event_time": 1779277817.255641,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.533778,
+          "event_time": 1779277817.309731,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.588555,
+          "event_time": 1779277817.363852,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.643045,
+          "event_time": 1779277817.4181373,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.698288,
+          "event_time": 1779277817.4724116,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.752813,
+          "event_time": 1779277817.5264587,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.8075845,
+          "event_time": 1779277817.580769,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.8623912,
+          "event_time": 1779277817.6349783,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.9168465,
+          "event_time": 1779277817.6899807,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283488.9708982,
+          "event_time": 1779277817.744143,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.025137,
+          "event_time": 1779277817.7984157,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.0800722,
+          "event_time": 1779277817.8524444,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.1344595,
+          "event_time": 1779277817.906448,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.1887617,
+          "event_time": 1779277817.9605849,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.2433121,
+          "event_time": 1779277818.0148585,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.2976024,
+          "event_time": 1779277818.0691438,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.3533843,
+          "event_time": 1779277818.122955,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.4088354,
+          "event_time": 1779277818.1769688,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.4638162,
+          "event_time": 1779277818.230976,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.518706,
+          "event_time": 1779277818.285037,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.572994,
+          "event_time": 1779277818.338929,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.627622,
+          "event_time": 1779277818.3928072,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.6820219,
+          "event_time": 1779277818.4465547,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.7364666,
+          "event_time": 1779277818.5007148,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.7910662,
+          "event_time": 1779277818.5547469,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.8463564,
+          "event_time": 1779277818.6091666,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.900677,
+          "event_time": 1779277818.6627715,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283489.9556422,
+          "event_time": 1779277818.716986,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283490.010647,
+          "event_time": 1779277818.7711816,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283490.0656297,
+          "event_time": 1779277818.8257198,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283490.120085,
+          "event_time": 1779277818.879956,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283490.1744478,
+          "event_time": 1779277818.9341521,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283490.2292993,
+          "event_time": 1779277818.9884198,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283490.2837758,
+          "event_time": 1779277819.042883,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283490.3383045,
+          "event_time": 1779277819.0969524,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283490.3928385,
+          "event_time": 1779277819.150994,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283490.4473214,
+          "event_time": 1779277819.205207,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283490.5014918,
+          "event_time": 1779277819.259147,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283490.5562935,
+          "event_time": 1779277819.313327,
           "observable_type": "s3_access_log"
         },
         {
           "event_name": "GetObject",
-          "principal": "full-nids-principal",
+          "principal": "local-runner-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283490.6110423,
+          "event_time": 1779277819.3674266,
           "observable_type": "s3_access_log"
         }
       ]
@@ -958,17 +958,17 @@
             "T5_SECRET_READ"
           ],
           "group_by": "actor",
-          "principal": "full-nids-actor",
+          "principal": "local-actor-local-20260520-184621",
           "sequence_window_seconds": 2.0,
           "passed": true
         }
       ],
-      "sim_start": "2026-04-27T09:51:31.019652+00:00",
-      "sim_end": "2026-04-27T09:51:33.019780+00:00",
+      "sim_start": "2026-05-20T11:50:19.677405+00:00",
+      "sim_end": "2026-05-20T11:50:21.677523+00:00",
       "details": {
         "org": "redteam-sandbox-org",
         "repo": "redteam-sandbox-repo",
-        "actor": "full-nids-actor",
+        "actor": "local-actor-local-20260520-184621",
         "approved_workflows": [
           ".github/workflows/redteam-on-demand.yml",
           ".github/workflows/redteam-scheduled.yml"
@@ -980,16 +980,16 @@
       "event_sequence": [
         {
           "event_name": "workflow_run.unauthorized_job",
-          "principal": "full-nids-actor",
+          "principal": "local-actor-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283491.0196817,
+          "event_time": 1779277819.6774194,
           "observable_type": "audit_log"
         },
         {
           "event_name": "secret.read",
-          "principal": "full-nids-actor",
+          "principal": "local-actor-local-20260520-184621",
           "resource": null,
-          "event_time": 1777283493.0197644,
+          "event_time": 1779277821.6775098,
           "observable_type": "audit_log"
         }
       ]
@@ -1025,8 +1025,8 @@
           "passed": true
         }
       ],
-      "sim_start": "2026-04-27T09:51:33.022018+00:00",
-      "sim_end": "2026-04-27T09:51:35.851270+00:00",
+      "sim_start": "2026-05-20T11:50:21.679580+00:00",
+      "sim_end": "2026-05-20T11:50:24.575975+00:00",
       "details": {
         "source": "redteam-recon",
         "hosts_scanned": 4,
@@ -1037,8 +1037,59 @@
         "open_count": 20,
         "closed_count": 8,
         "other_count": 0,
-        "pcap_artifact": "/home/robbert/redteam_auto/auto-redteam/artifacts/t6_network_recon-full-nids-1777283233.pcap",
+        "pcap_artifact": "/home/robbert/redteam_auto/auto-redteam/artifacts/t6_network_recon-local-20260520-184621.pcap",
         "nids_alerts_emitted": 1
+      },
+      "event_sequence": []
+    },
+    {
+      "scenario_id": "t7_log4shell_probe",
+      "mitre_ttp": "T1190",
+      "status": "success",
+      "detection_coverage_pct": 100.0,
+      "passed": 4,
+      "total": 4,
+      "detections": [
+        {
+          "rule_id": "T7_LOG4SHELL_PROBES",
+          "description": "\u22655 Log4Shell probe HTTP requests sent by the runner",
+          "hit_count": 5,
+          "min_hits": 5,
+          "passed": true
+        },
+        {
+          "rule_id": "SNORT_LOG4SHELL_GENERIC",
+          "description": "Snort fired generic ${jndi:* signature on the captured pcap (CVE-2021-44228)",
+          "hit_count": 3,
+          "min_hits": 1,
+          "passed": true
+        },
+        {
+          "rule_id": "SNORT_LOG4SHELL_LDAP",
+          "description": "Snort fired LDAP-specific ${jndi:ldap:// signature on the captured pcap",
+          "hit_count": 2,
+          "min_hits": 1,
+          "passed": true
+        },
+        {
+          "rule_id": "SNORT_LOG4SHELL_RMI",
+          "description": "Snort fired RMI-specific ${jndi:rmi:// signature on the captured pcap",
+          "hit_count": 1,
+          "min_hits": 1,
+          "passed": true
+        }
+      ],
+      "sim_start": "2026-05-20T11:50:24.579688+00:00",
+      "sim_end": "2026-05-20T11:50:27.272631+00:00",
+      "details": {
+        "source": "redteam-log4shell",
+        "target_host": "target-web",
+        "target_port": 8080,
+        "callback_host": "attacker.example",
+        "probes_sent": 5,
+        "errors": 0,
+        "snort_alert_count": 6,
+        "pcap_artifact": "/home/robbert/redteam_auto/auto-redteam/artifacts/t7_log4shell_probe-local-20260520-184621.pcap"
       },
       "event_sequence": []
     }

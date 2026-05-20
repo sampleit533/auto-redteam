@@ -1,0 +1,20 @@
+title: T7 Log4Shell Probes
+id: a9df1e94-33e5-57b9-8c53-ff5bf1a47a58
+status: experimental
+description: ≥5 Log4Shell probe HTTP requests sent by the runner
+references:
+- https://attack.mitre.org/techniques/T1190/
+- https://github.com/auto-redteam/scenarios/t7_log4shell_probe
+author: auto-redteam (capstone)
+date: '2026-05-20'
+tags:
+- attack.t1190
+logsource:
+  product: unknown
+detection:
+  selection:
+    pattern: log4shell_probe
+  condition: selection | count() > 4
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

@@ -6,7 +6,7 @@ references:
 - https://attack.mitre.org/techniques/T1110/001/
 - https://github.com/auto-redteam/scenarios/t1_bruteforce_ssh
 author: auto-redteam (capstone)
-date: '2026-04-27'
+date: '2026-05-20'
 tags:
 - attack.credential_access
 - attack.t1110.001

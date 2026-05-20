@@ -57,7 +57,7 @@ export REDTEAM_CI_ACTOR="${REDTEAM_CI_ACTOR:-local-actor-${RUN_ID}}"
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 
-# Pcap capture for T3/T6 — runs tcpdump inside an ephemeral docker
+# Pcap capture for T3/T6/T7 — runs tcpdump inside an ephemeral docker
 # container with cap_net_raw (no host setcap, no sudo).
 export ENABLE_PCAP="${ENABLE_PCAP:-1}"
 if [ "${ENABLE_PCAP}" = "1" ]; then
@@ -65,6 +65,11 @@ if [ "${ENABLE_PCAP}" = "1" ]; then
     docker build -q -t redteam/pcap-recorder:latest targets/pcap-recorder/ \
         && echo "[PCAP] Recorder image ready" \
         || { echo "[PCAP] WARNING: build failed, disabling capture"; export ENABLE_PCAP=0; }
+
+    echo "[SNORT] Building Snort 3 replay image (one-time, ~10s on first run)..."
+    docker build -q -t redteam/snort-runner:latest targets/snort-runner/ \
+        && echo "[SNORT] Snort runner image ready" \
+        || echo "[SNORT] WARNING: build failed, T7 will skip Snort replay"
 fi
 
 python runners/simulate.py \
@@ -120,6 +125,11 @@ echo "    - artifacts/trends.html"
 if ls artifacts/*.pcap >/dev/null 2>&1; then
     for p in artifacts/*.pcap; do
         echo "    - $p"
+    done
+fi
+if ls artifacts/*.snort.txt >/dev/null 2>&1; then
+    for s in artifacts/*.snort.txt; do
+        echo "    - $s  ($(wc -l < "$s") snort alert line(s))"
     done
 fi
 echo "    - artifacts/history/  ($(ls artifacts/history/*.json 2>/dev/null | wc -l) run(s) recorded)"

@@ -1,0 +1,20 @@
+title: Snort Log4Shell Ldap
+id: 7a433027-f4cb-517d-b8c2-de4795de2c71
+status: experimental
+description: Snort fired LDAP-specific ${jndi:ldap:// signature on the captured pcap
+references:
+- https://attack.mitre.org/techniques/T1190/
+- https://github.com/auto-redteam/scenarios/t7_log4shell_probe
+author: auto-redteam (capstone)
+date: '2026-05-20'
+tags:
+- attack.t1190
+logsource:
+  product: unknown
+detection:
+  selection:
+    rule_id: 1000002
+  condition: selection
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

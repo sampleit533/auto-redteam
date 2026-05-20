@@ -1,0 +1,20 @@
+title: Snort Log4Shell Generic
+id: 6eb9b9e9-267f-526f-a1d0-694ef7c79ba9
+status: experimental
+description: Snort fired generic ${jndi:* signature on the captured pcap (CVE-2021-44228)
+references:
+- https://attack.mitre.org/techniques/T1190/
+- https://github.com/auto-redteam/scenarios/t7_log4shell_probe
+author: auto-redteam (capstone)
+date: '2026-05-20'
+tags:
+- attack.t1190
+logsource:
+  product: unknown
+detection:
+  selection:
+    rule_id: 1000001
+  condition: selection
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

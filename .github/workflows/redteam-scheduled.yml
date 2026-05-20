@@ -85,9 +85,13 @@ jobs:
           timeout 30 bash -c 'until nc -z 127.0.0.1 8080; do sleep 1; done' && echo "target-web ready"
           timeout 30 bash -c 'until nc -z 127.0.0.1 6379; do sleep 1; done' && echo "target-redis ready"
 
-      - name: Build pcap recorder image (T3/T6)
+      - name: Build pcap recorder image (T3/T6/T7)
         run: |
           docker build -q -t redteam/pcap-recorder:latest targets/pcap-recorder/
+
+      - name: Build Snort 3 replay image (T7)
+        run: |
+          docker build -q -t redteam/snort-runner:latest targets/snort-runner/
 
       - name: Run all scenarios
         env:

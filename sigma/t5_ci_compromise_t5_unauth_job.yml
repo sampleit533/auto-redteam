@@ -6,7 +6,7 @@ references:
 - https://attack.mitre.org/techniques/T1195/001/
 - https://github.com/auto-redteam/scenarios/t5_ci_compromise
 author: auto-redteam (capstone)
-date: '2026-04-27'
+date: '2026-05-20'
 tags:
 - attack.initial_access
 - attack.t1195.001

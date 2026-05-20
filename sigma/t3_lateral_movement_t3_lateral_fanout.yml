@@ -6,7 +6,7 @@ references:
 - https://attack.mitre.org/techniques/T1021/
 - https://github.com/auto-redteam/scenarios/t3_lateral_movement
 author: auto-redteam (capstone)
-date: '2026-04-27'
+date: '2026-05-20'
 tags:
 - attack.lateral_movement
 - attack.t1021

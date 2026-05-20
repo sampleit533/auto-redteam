@@ -63,10 +63,18 @@ def _ensure_image() -> bool:
 
 
 @contextmanager
-def capture(scenario_id: str, run_id: str, ports=None):
+def capture(scenario_id: str, run_id: str, ports=None, iface: str | None = None,
+            link_type: str | None = None):
     """Capture pcap to artifacts/<scenario>-<run_id>.pcap inside a docker container.
 
     Yields (pcap_path: str | None, active: bool).
+
+    `iface` overrides the default interface (env PCAP_INTERFACE or "any").
+    Pass `iface="lo"` when the scenario only touches localhost — that produces
+    an EN10MB pcap that downstream tools (e.g. Snort 3) can parse, whereas
+    `-i any` produces LINUX_SLL2 which alpine's Snort 3 build cannot decode.
+
+    `link_type` is forwarded as `tcpdump -y` when set.
     """
     if os.environ.get("ENABLE_PCAP") != "1":
         yield (None, False)
@@ -88,7 +96,7 @@ def capture(scenario_id: str, run_id: str, ports=None):
         yield (None, False)
         return
 
-    iface = _default_interface()
+    iface = iface or _default_interface()
     out_dir = Path(os.environ.get("ARTIFACTS_DIR", "artifacts")).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     pcap_name = f"{scenario_id}-{run_id}.pcap"
@@ -107,6 +115,10 @@ def capture(scenario_id: str, run_id: str, ports=None):
         PCAP_IMAGE,
         "tcpdump",
         "-i", iface,
+    ]
+    if link_type:
+        cmd += ["-y", link_type]
+    cmd += [
         "-w", f"/out/{pcap_name}",
         "-U",            # packet-buffered output
         "-n",            # no DNS resolution

@@ -29,6 +29,7 @@ SCENARIO_MODULE_MAP = {
     "t4_data_exfiltration": "t4_data_exfiltration",
     "t5_ci_compromise": "t5_ci_compromise",
     "t6_network_recon": "t6_network_recon",
+    "t7_log4shell_probe": "t7_log4shell_probe",
 }
 
 
@@ -42,6 +43,7 @@ def load_scenario_def(scenario_id: str) -> dict:
         "t4_data_exfiltration": "T4_data_exfiltration.yaml",
         "t5_ci_compromise": "T5_ci_compromise.yaml",
         "t6_network_recon": "T6_network_recon.yaml",
+        "t7_log4shell_probe": "T7_log4shell_probe.yaml",
     }
     yaml_file = SCENARIOS_DIR / yaml_name_map.get(scenario_id, f"{scenario_id}.yaml")
     if not yaml_file.exists():

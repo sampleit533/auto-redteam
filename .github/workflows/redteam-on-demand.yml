@@ -14,6 +14,7 @@ on:
           - t4_data_exfiltration
           - t5_ci_compromise
           - t6_network_recon
+          - t7_log4shell_probe
           - all
         default: t1_bruteforce_ssh
       approval_ticket:
@@ -98,9 +99,13 @@ jobs:
           timeout 30 bash -c 'until nc -z 127.0.0.1 8080; do sleep 1; done' && echo "target-web ready" || echo "WARNING: target-web not ready"
           timeout 30 bash -c 'until nc -z 127.0.0.1 6379; do sleep 1; done' && echo "target-redis ready" || echo "WARNING: target-redis not ready"
 
-      - name: Build pcap recorder image (T3/T6)
+      - name: Build pcap recorder image (T3/T6/T7)
         run: |
           docker build -q -t redteam/pcap-recorder:latest targets/pcap-recorder/
+
+      - name: Build Snort 3 replay image (T7)
+        run: |
+          docker build -q -t redteam/snort-runner:latest targets/snort-runner/
 
       - name: Run simulation
         env:

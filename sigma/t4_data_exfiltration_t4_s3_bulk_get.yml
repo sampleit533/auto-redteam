@@ -6,7 +6,7 @@ references:
 - https://attack.mitre.org/techniques/T1530/
 - https://github.com/auto-redteam/scenarios/t4_data_exfiltration
 author: auto-redteam (capstone)
-date: '2026-04-27'
+date: '2026-05-20'
 tags:
 - attack.collection
 - attack.t1530

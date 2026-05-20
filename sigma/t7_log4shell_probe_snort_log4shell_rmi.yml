@@ -1,0 +1,20 @@
+title: Snort Log4Shell Rmi
+id: 74e19df1-2196-5a8f-8400-f205a341fda6
+status: experimental
+description: Snort fired RMI-specific ${jndi:rmi:// signature on the captured pcap
+references:
+- https://attack.mitre.org/techniques/T1190/
+- https://github.com/auto-redteam/scenarios/t7_log4shell_probe
+author: auto-redteam (capstone)
+date: '2026-05-20'
+tags:
+- attack.t1190
+logsource:
+  product: unknown
+detection:
+  selection:
+    rule_id: 1000003
+  condition: selection
+falsepositives:
+- Legitimate automation, scheduled jobs, or sanctioned red-team exercises.
+level: medium

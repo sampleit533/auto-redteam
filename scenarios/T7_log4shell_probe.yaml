@@ -1,0 +1,49 @@
+id: t7_log4shell_probe
+version: "1.0"
+title: Log4Shell N-day Probe (safe)
+mitre_ttp: T1190
+mitre_name: "Exploit Public-Facing Application"
+description: >
+  Send HTTP requests carrying a CVE-2021-44228 (Log4Shell) JNDI exploitation
+  payload to the sandbox web target. The trigger string travels in URI,
+  User-Agent, Referer, X-Api-Version, and request body — covering the
+  positions where public PoCs land it. Captures the resulting traffic to
+  pcap, then replays the pcap through an offline Snort 3 instance running
+  the bundled `log4shell.rules` ruleset.
+
+  Non-destructive: nginx is not vulnerable to Log4Shell, no Java, no
+  outbound LDAP/RMI callback. The objective is the detection chain end-to-end
+  (probe → pcap → Snort → alert observable), not exploitation.
+
+target:
+  service: target-web
+  host: target-web
+  port: 80
+  path: /
+
+parameters:
+  source_label: redteam-log4shell
+  request_count: 5
+  inter_probe_delay_seconds: 0.2
+  connect_timeout_seconds: 5.0
+  jndi_callback_host: "attacker.example"
+
+expected_observables:
+  - type: http_request
+    pattern: "log4shell_probe"
+    min_occurrences: 5
+  - type: snort_alert
+    rule_id: 1000001
+    max_ttd_seconds: 60
+  - type: snort_alert
+    rule_id: 1000002
+    max_ttd_seconds: 60
+
+cleanup:
+  - description: "No cleanup needed — HTTP probes are stateless and target is read-only"
+
+notes: >
+  Detection target: signature-based NIDS (Snort/Suricata-class) with content
+  rules for `${jndi:ldap://...}` and `${jndi:rmi://...}`. The evaluator
+  validates that the offline Snort replay fired SIDs 1000001-1000003 with
+  source attribution matching the runner.

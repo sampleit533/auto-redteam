@@ -1,0 +1,28 @@
+# Snort rules for CVE-2021-44228 (Log4Shell) JNDI exploitation attempts.
+#
+# Fires on any TCP traffic that contains a JNDI lookup string in the
+# payload — header, URI, or body. Three SIDs covering the canonical
+# "${jndi:..." form and the two most common URI schemes used by
+# public PoCs (ldap, rmi).
+#
+# We omit `flow:to_server,established` because offline pcap replay in
+# Snort 3 needs explicit `stream_tcp` configuration to track flows;
+# content match alone is sufficient to demonstrate the detection chain.
+
+alert tcp any any -> any any ( \
+    msg:"REDTEAM CVE-2021-44228 Log4Shell JNDI lookup attempt"; \
+    content:"${jndi:", nocase; \
+    reference:cve,2021-44228; \
+    sid:1000001; rev:4;)
+
+alert tcp any any -> any any ( \
+    msg:"REDTEAM CVE-2021-44228 Log4Shell JNDI/LDAP outbound payload"; \
+    content:"${jndi:ldap://", nocase; \
+    reference:cve,2021-44228; \
+    sid:1000002; rev:4;)
+
+alert tcp any any -> any any ( \
+    msg:"REDTEAM CVE-2021-44228 Log4Shell JNDI/RMI outbound payload"; \
+    content:"${jndi:rmi://", nocase; \
+    reference:cve,2021-44228; \
+    sid:1000003; rev:4;)

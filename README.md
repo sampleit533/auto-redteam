@@ -4,9 +4,9 @@ Academic prototype for red team automation in CI/CD. Runs non-destructive attack
 
 ## Scope
 
-- Implemented end-to-end scenarios: `T1`, `T2`, `T3`, `T4`, `T5`, `T6`
+- Implemented end-to-end scenarios: `T1`, `T2`, `T3`, `T4`, `T5`, `T6`, `T7`
 - Evaluation source of truth: simulation observables and expected mappings
-- Primary outputs: workflow artifacts, JSON results, HTML reports, **PCAP files** (T3 / T6) for offline replay into Zeek/Suricata
+- Primary outputs: workflow artifacts, JSON results, HTML reports, **PCAP files** (T3 / T6 / T7) and **Snort 3 alert logs** (T7) for offline detection replay
 - Out of current implementation scope: production SIEM integrations, Slack/JIRA notifications, enterprise secrets management
 
 ## Architecture
@@ -26,6 +26,7 @@ Academic prototype for red team automation in CI/CD. Runs non-destructive attack
 | T4 | Data Access / Bulk S3 Read | T1530 | implemented | LocalStack S3 |
 | T5 | Supply-chain / CI Compromise | T1195.001 | implemented | observable-only (audit_log events) |
 | T6 | Network Service Discovery | T1046 | implemented | target-ssh / target-web / target-redis / localstack |
+| T7 | Log4Shell N-day Probe (CVE-2021-44228) | T1190 | implemented | target-web (nginx) + offline Snort 3 replay |
 
 More scenarios can be added by dropping a YAML file in `scenarios/` and a Python module in `runners/scenarios/`.
 
@@ -35,30 +36,32 @@ More scenarios can be added by dropping a YAML file in `scenarios/` and a Python
 
 1. Go to **Actions** → **RedTeam On-Demand**
 2. Click **Run workflow**
-3. Select a scenario (`t1_bruteforce_ssh` … `t6_network_recon`, or `all`)
+3. Select a scenario (`t1_bruteforce_ssh` … `t7_log4shell_probe`, or `all`)
 4. Fill in the approval ticket ID
 5. Click **Run workflow**
 
 ### Run all scenarios locally
 
 ```bash
-# Bring up sandbox + run all 6 scenarios + tear down (single command)
+# Bring up sandbox + run all 7 scenarios + tear down (single command)
 ./run-local.sh safe all
 
 # Dry-run only (no infra needed)
 python runners/simulate.py --scenario all --mode dry-run
 ```
 
-### PCAP capture (T3 / T6)
+### PCAP capture (T3 / T6 / T7)
 
-The two network-sensor scenarios capture a `.pcap` per run by spawning an
+The three network-sensor scenarios capture a `.pcap` per run by spawning an
 ephemeral Docker container (`redteam/pcap-recorder`, alpine + tcpdump) with
 `--cap-add=NET_RAW --cap-add=NET_ADMIN --network=host`. No host `setcap` or
 `sudo` is required — the capability lives only inside the throwaway
 container.
 
 Activated by `ENABLE_PCAP=1` (default in `run-local.sh` and the GitHub
-workflows). The recorder image is built once on first use.
+workflows). The recorder image is built once on first use. T3 and T6
+capture on `-i any` (LINUX_SLL2 link-type, fine for `nids-lite`); T7
+captures on `-i lo` (EN10MB) so the offline Snort 3 engine can decode it.
 
 Output: `artifacts/<scenario_id>-<run_id>.pcap`, replayable into Zeek /
 Suricata for sensor-rule validation.
@@ -76,6 +79,25 @@ This closes the loop from captured pcap → detection: the
 `NIDS_LATERAL_MOVEMENT` and `NIDS_PORT_SCAN` rules in
 `expected_mappings.yaml` evaluate against these alerts instead of being
 SKIP-ped (no live Zeek/Suricata required).
+
+### Snort 3 offline replay (T7)
+
+T7 sends Log4Shell (CVE-2021-44228) JNDI probes against `target-web`,
+captures pcap, then replays it through an ephemeral Snort 3 container
+(`redteam/snort-runner`, alpine + snort 3.x) running the bundled
+`log4shell.rules`:
+
+- SID 1000001 — generic `${jndi:` lookup
+- SID 1000002 — `${jndi:ldap://` outbound payload
+- SID 1000003 — `${jndi:rmi://` outbound payload
+
+Parsed Snort `alert_fast` lines are surfaced as `snort_alert` observables
+and validated by the evaluator (`SNORT_LOG4SHELL_*` rules in
+`expected_mappings.yaml`). Build is one-shot — alpine community repo,
+no DAQ/NIC trickery — and runs entirely from the captured pcap, so the
+runner stays non-destructive (no Java, no actual Log4Shell exploitation).
+
+Output: `artifacts/<scenario_id>-<run_id>.snort.txt` next to the pcap.
 
 ### Multi-run trend dashboard
 
@@ -120,7 +142,8 @@ auto-redteam/
 │   ├── T3_lateral_movement.yaml
 │   ├── T4_data_exfiltration.yaml
 │   ├── T5_ci_compromise.yaml
-│   └── T6_network_recon.yaml
+│   ├── T6_network_recon.yaml
+│   └── T7_log4shell_probe.yaml
 ├── runners/
 │   ├── Dockerfile                   # Attack runner image (safe tools only)
 │   ├── simulate.py                  # Main entry point
@@ -130,9 +153,12 @@ auto-redteam/
 │       ├── t3_lateral_movement.py   # T3 implementation
 │       ├── t4_data_exfiltration.py  # T4 implementation
 │       ├── t5_ci_compromise.py      # T5 implementation
-│       └── t6_network_recon.py      # T6 implementation
+│       ├── t6_network_recon.py      # T6 implementation
+│       └── t7_log4shell_probe.py    # T7 implementation
 ├── targets/
-│   └── docker-compose.yml           # Sandbox target workloads
+│   ├── docker-compose.yml           # Sandbox target workloads
+│   ├── pcap-recorder/               # tcpdump container image (T3/T6/T7)
+│   └── snort-runner/                # Snort 3 offline replay image (T7)
 ├── collection/
 │   └── filebeat.yml                 # Log shipping config
 ├── evaluation/
