@@ -10,7 +10,21 @@ name: RedTeam — Cloud Deploy (real AWS, OIDC)
 #       REDTEAM_SANDBOX_BOUNDARY_ARN (falls back to the bootstrapped default)
 
 on:
+  # Manual run (direct dispatch from the Actions tab).
   workflow_dispatch:
+    inputs:
+      approval_ticket:
+        description: 'Approval ticket ID (required)'
+        required: true
+        type: string
+      cloudtrail_timeout:
+        description: 'Max seconds to wait for CloudTrail (latency ~5-15 min)'
+        required: false
+        type: string
+        default: '900'
+  # Reusable: called by redteam-pipeline.yml as the Deploy stage once CI passes
+  # on main. The `inputs` context below is shared by both triggers.
+  workflow_call:
     inputs:
       approval_ticket:
         description: 'Approval ticket ID (required)'
@@ -44,10 +58,10 @@ jobs:
     steps:
       - name: Check approval ticket
         run: |
-          if [ -z "${{ github.event.inputs.approval_ticket }}" ]; then
+          if [ -z "${{ inputs.approval_ticket }}" ]; then
             echo "ERROR: No approval ticket provided. Aborting."; exit 1
           fi
-          echo "Approval ticket: ${{ github.event.inputs.approval_ticket }}"
+          echo "Approval ticket: ${{ inputs.approval_ticket }}"
           echo "Triggered by:    ${{ github.actor }}"
 
   deploy:
@@ -83,7 +97,7 @@ jobs:
         env:
           REDTEAM_CLOUD_MODE: "aws"
           REDTEAM_CLOUDTRAIL_REGION: ${{ env.AWS_REGION }}
-          REDTEAM_CLOUDTRAIL_TIMEOUT: ${{ github.event.inputs.cloudtrail_timeout }}
+          REDTEAM_CLOUDTRAIL_TIMEOUT: ${{ inputs.cloudtrail_timeout }}
           REDTEAM_CLOUDTRAIL_INTERVAL: "30"
         run: |
           python runners/simulate.py \
@@ -156,6 +170,6 @@ jobs:
             echo "| Run ID | ${{ github.run_id }} |"
             echo "| Target | REAL AWS IAM (us-east-1) |"
             echo "| Auth | GitHub OIDC → redteam-deploy (no static keys) |"
-            echo "| Approval Ticket | ${{ github.event.inputs.approval_ticket }} |"
+            echo "| Approval Ticket | ${{ inputs.approval_ticket }} |"
             echo "| Triggered by | ${{ github.actor }} |"
           } >> $GITHUB_STEP_SUMMARY

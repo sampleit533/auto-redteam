@@ -123,11 +123,38 @@ approve — rất hợp với câu chuyện DevSecOps "deploy lên prod cần ga
 
 ## 5. Chạy
 
+### 5.1. Tự động — pipeline CI/CD liên tục (khuyến nghị)
+
+Workflow **`RedTeam — CI/CD Pipeline`** (`redteam-pipeline.yml`) chạy **tự động**
+mỗi khi `push` / mở `pull_request` vào `main`:
+
+```
+push / PR ─► Code (lint + gitleaks) ─► Build & Test (T2 trên LocalStack, gate 100%)
+                                              │
+                              push vào main ──┘─► Deploy (T2 trên AWS thật)
+```
+
+- **Code**: `flake8` (chặn lỗi syntax/undefined) + quét secret bằng `gitleaks`.
+- **Build & Test**: dựng LocalStack, chạy **T2 trên cloud giả**, `evaluate`, và
+  **gate**: coverage T2 phải = 100% mới qua. Phản hồi nhanh, **$0**, không đụng AWS.
+- **Deploy**: **chỉ khi push vào `main`** và Test đã xanh → gọi lại workflow
+  `redteam-cloud-deploy.yml` (reusable) để **promote đúng kịch bản T2 đó lên AWS
+  thật**, qua cổng phê duyệt `aws-sandbox` (mục 4.2).
+
+> Triết lý "shift-left → promote": cùng một kịch bản được kiểm trên cloud **giả**
+> ở mọi thay đổi, rồi mới lên cloud **thật** khi merge — đúng mô hình CI→CD.
+
+> ⚠️ Vì vậy **mỗi lần push vào `main` sẽ kích hoạt deploy lên AWS thật**. Muốn
+> chặn lại bằng tay → bật **Required reviewers** cho environment `aws-sandbox`
+> (mục 4.2); khi đó deploy sẽ đợi bạn bấm *approve*.
+
+### 5.2. Thủ công — chỉ chạy riêng stage Deploy
+
 **Actions → "RedTeam — Cloud Deploy (real AWS, OIDC)" → Run workflow:**
 - `approval_ticket`: mã ticket bất kỳ (bắt buộc, để audit).
 - `cloudtrail_timeout`: mặc định `900` (giây) — CloudTrail trễ ~5–15 phút.
 
-Workflow sẽ:
+Stage Deploy (dù chạy tự động hay thủ công) sẽ:
 1. Assume `redteam-deploy` qua OIDC → `aws sts get-caller-identity` xác nhận.
 2. Chạy T2 trên IAM thật (`REDTEAM_CLOUD_MODE=aws`).
 3. Poll CloudTrail `lookup-events` (us-east-1) tới khi đủ 3 event

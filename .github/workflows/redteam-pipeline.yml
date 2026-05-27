@@ -1,0 +1,174 @@
+name: RedTeam — CI/CD Pipeline
+
+# Continuous pipeline that ties the whole story together:
+#
+#   push / PR ──► Code (lint + secret scan) ──► Build & Test (LocalStack)
+#                                                       │
+#                                       push to main ───┘──► Deploy (real AWS)
+#
+# Fast feedback on every change runs against a FAKE cloud (LocalStack); the very
+# same scenario (T2) is then promoted to the REAL cloud on merge to main, behind
+# the `aws-sandbox` environment approval gate. The deploy stage is the reusable
+# redteam-cloud-deploy.yml workflow (single source of truth, no duplication).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Read-only by default; the deploy job elevates to id-token for OIDC.
+permissions:
+  contents: read
+
+# Supersede stale PR runs, but never cancel a branch/main run mid-deploy.
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # ── Stage 1: Code — shift-left static analysis ──────────────────────────────
+  lint:
+    name: Code — lint & secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so the secret scan covers all commits
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install linters
+        run: pip install flake8 pyyaml
+
+      - name: Flake8 — fail on real errors (syntax / undefined names)
+        run: |
+          flake8 . --exclude=.venv,.git \
+            --select=E9,F63,F7,F82 --count --show-source --statistics
+
+      - name: Flake8 — style report (non-blocking)
+        run: |
+          flake8 . --exclude=.venv,.git \
+            --max-line-length=120 --count --statistics --exit-zero
+
+      - name: Validate workflow & mapping YAML
+        run: |
+          python - <<'PY'
+          import glob, yaml
+          files = glob.glob(".github/workflows/*.yml") + ["evaluation/expected_mappings.yaml"]
+          for f in files:
+              with open(f) as fh:
+                  yaml.safe_load(fh)
+              print(f"OK  {f}")
+          PY
+
+      - name: Secret scan (gitleaks)
+        run: |
+          GL=8.18.4
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GL}/gitleaks_${GL}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks detect --source . --no-banner --redact --exit-code 1
+
+  # ── Stage 2: Build & Test — run T2 against a fake cloud (LocalStack) ─────────
+  build-test:
+    name: Build & Test — T2 on LocalStack
+    runs-on: ubuntu-latest
+    needs: lint
+    env:
+      IAM_ENDPOINT: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install runner dependencies
+        run: pip install -r runners/requirements.txt
+
+      - name: Start LocalStack (fake IAM + STS + CloudTrail + S3)
+        run: |
+          docker run -d --name localstack \
+            -p 127.0.0.1:4566:4566 \
+            -e SERVICES=iam,sts,cloudtrail,s3 \
+            -e EAGER_SERVICE_LOADING=1 \
+            localstack/localstack:3
+          for i in {1..40}; do
+            if curl -sf http://localhost:4566/_localstack/health > /dev/null 2>&1; then
+              echo "LocalStack ready after ~$((i*3))s"; break
+            fi
+            sleep 3
+          done
+          curl -sf http://localhost:4566/_localstack/health > /dev/null \
+            || { echo "LocalStack failed to start"; docker logs localstack; exit 1; }
+
+      - name: Run T2 privilege escalation (safe, against LocalStack)
+        env:
+          # REDTEAM_CLOUD_MODE intentionally unset -> LocalStack backend.
+          REDTEAM_IAM_PRINCIPAL: ci-${{ github.run_id }}
+          REDTEAM_CI_ACTOR: ci-${{ github.run_id }}
+        run: |
+          python runners/simulate.py \
+            --scenario t2_privilege_escalation \
+            --mode safe \
+            --run-id ${{ github.run_id }} \
+            --output artifacts/results.json
+
+      - name: Evaluate detections
+        run: |
+          python evaluation/evaluate_results.py \
+            --results artifacts/results.json \
+            --mappings evaluation/expected_mappings.yaml \
+            --out artifacts/evaluation.json
+
+      - name: Detection gate — T2 must be fully detected before promotion
+        run: |
+          python - <<'PY'
+          import json, sys
+          data = json.load(open("artifacts/evaluation.json"))
+          t2 = next((s for s in data["scenarios"]
+                     if s["scenario_id"] == "t2_privilege_escalation"), None)
+          if t2 is None:
+              print("FAIL: T2 missing from evaluation"); sys.exit(1)
+          cov = t2.get("detection_coverage_pct", 0.0)
+          print(f"T2 LocalStack detection coverage: {cov}%  "
+                f"({t2.get('passed')}/{t2.get('total')} checks)")
+          sys.exit(0 if cov >= 100.0 else 1)
+          PY
+
+      - name: Upload CI artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-localstack-${{ github.run_id }}
+          path: artifacts/
+          retention-days: 14
+
+      - name: Teardown LocalStack
+        if: always()
+        run: docker rm -f localstack || true
+
+  # ── Stage 3: Deploy — promote T2 to REAL AWS (main only, gated) ─────────────
+  deploy:
+    name: Deploy — promote to real AWS
+    needs: build-test
+    # Only on a direct push to main (not on PRs). The reusable workflow's
+    # `aws-sandbox` environment gate provides the manual approval.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write   # OIDC -> assume redteam-deploy
+      contents: read
+    uses: ./.github/workflows/redteam-cloud-deploy.yml
+    with:
+      approval_ticket: pipeline-${{ github.run_id }}
+      cloudtrail_timeout: "900"
+    secrets: inherit
