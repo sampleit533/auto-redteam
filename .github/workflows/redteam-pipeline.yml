@@ -7,9 +7,10 @@ name: RedTeam — CI/CD Pipeline
 #                                       push to main ───┘──► Deploy (real AWS)
 #
 # Fast feedback on every change runs against a FAKE cloud (LocalStack); the very
-# same scenario (T2) is then promoted to the REAL cloud on merge to main, behind
-# the `aws-sandbox` environment approval gate. The deploy stage is the reusable
-# redteam-cloud-deploy.yml workflow (single source of truth, no duplication).
+# same cloud kill chain (recon t8 → privesc t2 → exfil t4) is then promoted to the
+# REAL cloud on merge to main, behind the `aws-sandbox` environment approval gate.
+# The deploy stage is the reusable redteam-cloud-deploy.yml workflow (single
+# source of truth, no duplication).
 
 on:
   push:
@@ -75,7 +76,7 @@ jobs:
 
   # ── Stage 2: Build & Test — run T2 against a fake cloud (LocalStack) ─────────
   build-test:
-    name: Build & Test — T2 on LocalStack
+    name: Build & Test — cloud chain on LocalStack
     runs-on: ubuntu-latest
     needs: lint
     env:
@@ -111,14 +112,15 @@ jobs:
           curl -sf http://localhost:4566/_localstack/health > /dev/null \
             || { echo "LocalStack failed to start"; docker logs localstack; exit 1; }
 
-      - name: Run T2 privilege escalation (safe, against LocalStack)
+      - name: Run cloud kill chain (safe, against LocalStack)
         env:
-          # REDTEAM_CLOUD_MODE intentionally unset -> LocalStack backend.
+          # REDTEAM_CLOUD_MODE intentionally unset -> LocalStack backend; the same
+          # 3 scenarios (recon → T2 → exfil) that get promoted to real AWS.
           REDTEAM_IAM_PRINCIPAL: ci-${{ github.run_id }}
           REDTEAM_CI_ACTOR: ci-${{ github.run_id }}
         run: |
           python runners/simulate.py \
-            --scenario t2_privilege_escalation \
+            --scenario cloud \
             --mode safe \
             --run-id ${{ github.run_id }} \
             --output artifacts/results.json
@@ -130,19 +132,24 @@ jobs:
             --mappings evaluation/expected_mappings.yaml \
             --out artifacts/evaluation.json
 
-      - name: Detection gate — T2 must be fully detected before promotion
+      - name: Detection gate — cloud chain must be fully detected before promotion
         run: |
           python - <<'PY'
           import json, sys
           data = json.load(open("artifacts/evaluation.json"))
-          t2 = next((s for s in data["scenarios"]
-                     if s["scenario_id"] == "t2_privilege_escalation"), None)
-          if t2 is None:
-              print("FAIL: T2 missing from evaluation"); sys.exit(1)
-          cov = t2.get("detection_coverage_pct", 0.0)
-          print(f"T2 LocalStack detection coverage: {cov}%  "
-                f"({t2.get('passed')}/{t2.get('total')} checks)")
-          sys.exit(0 if cov >= 100.0 else 1)
+          required = ["t8_cloud_recon", "t2_privilege_escalation", "t4_data_exfiltration"]
+          by_id = {s["scenario_id"]: s for s in data["scenarios"]}
+          ok = True
+          for sid in required:
+              s = by_id.get(sid)
+              if s is None:
+                  print(f"FAIL: {sid} missing from evaluation"); ok = False; continue
+              cov = s.get("detection_coverage_pct", 0.0)
+              print(f"{sid:26s} LocalStack coverage: {cov}%  "
+                    f"({s.get('passed')}/{s.get('total')} checks)")
+              if cov < 100.0:
+                  ok = False
+          sys.exit(0 if ok else 1)
           PY
 
       - name: Upload CI artifacts

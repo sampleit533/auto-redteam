@@ -201,3 +201,56 @@ mappings:
         min_hits: 1
         description: "Snort fired RMI-specific ${jndi:rmi:// signature on the captured pcap"
     max_ttd_seconds: 60
+
+  - scenario_id: t8_cloud_recon
+    mitre_ttp: T1580
+    required_detections:
+      - rule_id: RECON_LIST_USERS
+        index_pattern: "redteam-cloudtrail-*"
+        query:
+          bool:
+            must:
+              - match: { "eventName": "ListUsers" }
+        min_hits: 1
+        description: "ListUsers (IAM principal enumeration) must appear in CloudTrail"
+      - rule_id: RECON_LIST_ROLES
+        index_pattern: "redteam-cloudtrail-*"
+        query:
+          bool:
+            must:
+              - match: { "eventName": "ListRoles" }
+        min_hits: 1
+        description: "ListRoles (IAM role enumeration) must appear in CloudTrail"
+      - rule_id: RECON_LIST_POLICIES
+        index_pattern: "redteam-cloudtrail-*"
+        query:
+          bool:
+            must:
+              - match: { "eventName": "ListPolicies" }
+        min_hits: 1
+        description: "ListPolicies (managed-policy enumeration) must appear in CloudTrail"
+      - rule_id: RECON_ACCOUNT_AUTH_DETAILS
+        index_pattern: "redteam-cloudtrail-*"
+        query:
+          bool:
+            must:
+              - match: { "eventName": "GetAccountAuthorizationDetails" }
+        min_hits: 1
+        description: "GetAccountAuthorizationDetails (full IAM dump) must appear in CloudTrail"
+      - rule_id: CLOUD_RECON_BURST
+        description: "≥4 distinct Discovery calls from the same principal within 5 min"
+        composite: true
+        requires:
+          - RECON_LIST_USERS
+          - RECON_LIST_ROLES
+          - RECON_LIST_POLICIES
+          - RECON_ACCOUNT_AUTH_DETAILS
+        group_by: principal
+        observable_types: [cloudtrail_log]
+        required_event_names:
+          - ListUsers
+          - ListRoles
+          - ListPolicies
+          - GetAccountAuthorizationDetails
+        window_seconds: 300
+    max_ttd_seconds: 300

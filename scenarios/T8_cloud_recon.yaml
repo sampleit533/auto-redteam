@@ -1,0 +1,52 @@
+id: t8_cloud_recon
+version: "1.0"
+title: Cloud Infrastructure Discovery (safe)
+mitre_ttp: T1580
+mitre_name: "Cloud Infrastructure Discovery"
+description: >
+  Simulate the read-only enumeration that precedes privilege escalation and
+  exfiltration: list IAM users, roles, customer-managed policies, the full
+  account authorization detail, and S3 buckets. Read-only — nothing is created
+  or modified. This is the opening move of the cloud kill chain
+  (Discovery → PrivEsc(T2) → Exfil(T4)).
+
+target:
+  service: iam
+  endpoint: "{{ IAM_ENDPOINT | default('http://localstack:4566') }}"
+  region: us-east-1
+  test_principal_env: REDTEAM_IAM_PRINCIPAL
+
+parameters:
+  delay_between_calls_seconds: 2
+  total_window_seconds: 300
+
+expected_observables:
+  - type: cloudtrail_log
+    event_name: ListUsers
+    min_occurrences: 1
+  - type: cloudtrail_log
+    event_name: ListRoles
+    min_occurrences: 1
+  - type: cloudtrail_log
+    event_name: ListPolicies
+    min_occurrences: 1
+  - type: cloudtrail_log
+    event_name: GetAccountAuthorizationDetails
+    min_occurrences: 1
+  - type: siem_alert
+    rule_id: CLOUD_RECON_BURST
+    max_ttd_seconds: 300
+    condition: "multiple distinct Discovery API calls from the same principal within 5 minutes"
+
+cleanup:
+  - action: none
+    description: "Read-only scenario — nothing is created, nothing to clean up"
+
+notes: >
+  Read-only Discovery. In cloud mode the observables are read back from REAL
+  CloudTrail (management events, free via Event history), scoped by the caller's
+  assumed-role session name (redteam-<run_id> in CI) rather than by run_id —
+  recon calls embed no run_id in any resource. In LocalStack mode the runner
+  self-reports the calls it made, since LocalStack has no CloudTrail Event
+  history. Detection target: a volume/diversity anomaly — many distinct
+  enumeration calls from a single principal in a short window.

@@ -30,6 +30,18 @@ SCENARIO_MODULE_MAP = {
     "t5_ci_compromise": "t5_ci_compromise",
     "t6_network_recon": "t6_network_recon",
     "t7_log4shell_probe": "t7_log4shell_probe",
+    "t8_cloud_recon": "t8_cloud_recon",
+}
+
+# Named scenario groups. `--scenario cloud` runs the AWS kill chain in order:
+#   Discovery (t8) → Privilege Escalation (t2) → Exfiltration (t4)
+# These three are the ones deployed to REAL AWS (see redteam-cloud-deploy.yml).
+SCENARIO_GROUPS = {
+    "cloud": [
+        "t8_cloud_recon",
+        "t2_privilege_escalation",
+        "t4_data_exfiltration",
+    ],
 }
 
 
@@ -44,6 +56,7 @@ def load_scenario_def(scenario_id: str) -> dict:
         "t5_ci_compromise": "T5_ci_compromise.yaml",
         "t6_network_recon": "T6_network_recon.yaml",
         "t7_log4shell_probe": "T7_log4shell_probe.yaml",
+        "t8_cloud_recon": "T8_cloud_recon.yaml",
     }
     yaml_file = SCENARIOS_DIR / yaml_name_map.get(scenario_id, f"{scenario_id}.yaml")
     if not yaml_file.exists():
@@ -166,9 +179,12 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    scenarios_to_run = (
-        list(SCENARIO_MODULE_MAP.keys()) if args.scenario == "all" else [args.scenario]
-    )
+    if args.scenario == "all":
+        scenarios_to_run = list(SCENARIO_MODULE_MAP.keys())
+    elif args.scenario in SCENARIO_GROUPS:
+        scenarios_to_run = SCENARIO_GROUPS[args.scenario]
+    else:
+        scenarios_to_run = [args.scenario]
 
     all_results = []
     for sid in scenarios_to_run:

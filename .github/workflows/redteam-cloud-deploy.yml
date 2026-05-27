@@ -1,7 +1,12 @@
 name: RedTeam — Cloud Deploy (real AWS, OIDC)
 
-# Release → Deploy stage: runs T2 against REAL AWS IAM and confirms detection
-# from REAL CloudTrail. Authenticates with GitHub OIDC — no static AWS keys.
+# Release → Deploy stage: runs the cloud kill chain against REAL AWS and confirms
+# detection from REAL CloudTrail. Authenticates with GitHub OIDC — no static keys.
+#
+# Kill chain (--scenario cloud): Discovery (t8) → Privilege Escalation (t2) →
+# Exfiltration (t4). t8/t2 are read back from CloudTrail MANAGEMENT events
+# (free, Event history); t4's S3 GetObject are DATA events read back from the
+# CloudWatch Logs group the trail ships to (see infra/aws-bootstrap/cloud_scenarios.tf).
 #
 # Prereqs (one-time, see infra/aws-bootstrap + setup_aws.md):
 #   • OIDC provider + redteam-deploy role + redteam-sandbox-boundary exist.
@@ -65,7 +70,7 @@ jobs:
           echo "Triggered by:    ${{ github.actor }}"
 
   deploy:
-    name: Run T2 on real AWS + read CloudTrail
+    name: Run cloud kill chain on real AWS + read CloudTrail
     runs-on: ubuntu-latest
     needs: preflight
     # Optional manual gate: add 'Required reviewers' to this environment in
@@ -93,15 +98,17 @@ jobs:
       - name: Install runner dependencies
         run: pip install -r runners/requirements.txt
 
-      - name: Run T2 against real AWS IAM
+      - name: Run cloud kill chain against real AWS (recon → T2 → exfil)
         env:
           REDTEAM_CLOUD_MODE: "aws"
           REDTEAM_CLOUDTRAIL_REGION: ${{ env.AWS_REGION }}
           REDTEAM_CLOUDTRAIL_TIMEOUT: ${{ inputs.cloudtrail_timeout }}
           REDTEAM_CLOUDTRAIL_INTERVAL: "30"
+          # CloudWatch Logs group the trail ships S3 DATA events to (t4 readback).
+          REDTEAM_TRAIL_LOG_GROUP: "/aws/cloudtrail/redteam-sandbox"
         run: |
           python runners/simulate.py \
-            --scenario t2_privilege_escalation \
+            --scenario cloud \
             --mode safe \
             --run-id ${{ github.run_id }} \
             --output artifacts/results.json
@@ -130,9 +137,10 @@ jobs:
           path: artifacts/
           retention-days: 30
 
-      # Safety net: the T2 runner cleans up its own IAM resources, but if the
-      # job was cancelled mid-run, sweep any leftover sandbox-pathed principals.
-      - name: Sweep leftover sandbox principals
+      # Safety net: each runner cleans up after itself, but if the job was
+      # cancelled mid-run, sweep any leftover sandbox-pathed IAM principals (t2)
+      # and leftover redteam-sandbox-* S3 buckets (t4).
+      - name: Sweep leftover sandbox principals & buckets
         if: always()
         run: |
           for r in $(aws iam list-roles --path-prefix /redteam-sandbox/ \
@@ -153,6 +161,14 @@ jobs:
             done
             aws iam delete-user --user-name "$u" || true
           done
+          # t4 sandbox buckets (redteam-sandbox-* — never the trail's own log
+          # bucket, which is redteam-trail-logs-*). --force empties then removes.
+          for b in $(aws s3api list-buckets \
+                      --query "Buckets[?starts_with(Name, 'redteam-sandbox-')].Name" \
+                      --output text); do
+            echo "Cleaning bucket $b"
+            aws s3 rb "s3://$b" --force || true
+          done
 
   summary:
     name: Post summary
@@ -168,7 +184,9 @@ jobs:
             echo "| Field | Value |"
             echo "|-------|-------|"
             echo "| Run ID | ${{ github.run_id }} |"
-            echo "| Target | REAL AWS IAM (us-east-1) |"
+            echo "| Scenarios | Cloud kill chain: recon (t8) → privesc (t2) → exfil (t4) |"
+            echo "| Target | REAL AWS IAM + S3 (us-east-1) |"
+            echo "| Detection | CloudTrail management events (t8/t2) + S3 data events via CloudWatch Logs (t4) |"
             echo "| Auth | GitHub OIDC → redteam-deploy (no static keys) |"
             echo "| Approval Ticket | ${{ inputs.approval_ticket }} |"
             echo "| Triggered by | ${{ github.actor }} |"
