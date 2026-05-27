@@ -17,8 +17,8 @@ target:
 
 parameters:
   approved_workflows:
-    - .github/workflows/redteam-on-demand.yml
-    - .github/workflows/redteam-scheduled.yml
+    - .github/workflows/redteam-pipeline.yml
+    - .github/workflows/redteam-cloud-deploy.yml
   unauthorized_workflow: ".github/workflows/exfil-test.yml"
   secret_name: "REDTEAM_DEPLOY_KEY"
   unusual_context: "manual-trigger-from-fork"

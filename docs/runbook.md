@@ -1,15 +1,15 @@
 # Runbook — auto-redteam
 
-## Running a scenario (on-demand)
+## Running a scenario (CI pipeline)
 
 1. Ensure you have an approval ticket from the lab owner.
-2. Go to **Actions → RedTeam — On-Demand → Run workflow**.
-3. Fill in the form:
-   - **scenario**: choose the scenario ID
-   - **approval_ticket**: paste your ticket ID
-   - **mode**: use `safe` for a real sandbox simulation
-4. Click **Run workflow**.
-5. Monitor the run. Download the HTML report from the **Artifacts** section.
+2. Push your branch / open a PR to `main` — `redteam-pipeline.yml` runs automatically:
+   lint + secret scan → kill chain on LocalStack → detection evaluation.
+3. On merge to `main`, the pipeline gates and promotes the kill chain to **real AWS**
+   via the reusable `redteam-cloud-deploy.yml` (OIDC, approval ticket = `pipeline-<run_id>`).
+4. Monitor the run. Download the HTML report from the **Artifacts** section.
+
+For ad-hoc runs without CI, use the local path below.
 
 ## Required GitHub Secrets
 

@@ -159,23 +159,24 @@ Add a block to `evaluation/expected_mappings.yaml`. The evaluator supports two s
 
 ---
 
-## Step 5 — Add the scenario to the workflow dropdown
+## Step 5 — Make the scenario runnable from CI
 
-In `.github/workflows/redteam-on-demand.yml`, add the new ID to the `options` list:
+Scenarios run via `--scenario <id>` (the pipeline and `run-local.sh` pass this
+through). A single ID, `all`, or a group name all work. To include the new
+scenario in a chain, add its ID to a group in `SCENARIO_GROUPS` in
+`runners/simulate.py`:
 
-```yaml
-      scenario:
-        type: choice
-        options:
-          - t1_bruteforce_ssh
-          - t2_privilege_escalation
-          - t3_lateral_movement
-          - t4_data_exfiltration
-          - t5_ci_compromise
-          - t6_network_recon
-          - tx_my_scenario      # ← add here
-          - all
+```python
+SCENARIO_GROUPS = {
+    "kill-chain": ["t1_bruteforce_ssh", "t2_privilege_escalation", "t4_data_exfiltration"],
+    "cloud": ["t8_cloud_recon", "t2_privilege_escalation", "t4_data_exfiltration"],
+    # "my-chain": ["tx_my_scenario", ...],   # ← add a group here if needed
+}
 ```
+
+The pipeline gate (`redteam-pipeline.yml`) and the real-AWS deploy
+(`redteam-cloud-deploy.yml`) both run `--scenario kill-chain`; adjust the group
+or the gate's `required` list there if the new scenario should be enforced.
 
 ---
 
@@ -186,5 +187,5 @@ In `.github/workflows/redteam-on-demand.yml`, add the new ID to the `options` li
 - [ ] Cleanup logic in `run()` removes all created resources
 - [ ] `runners/simulate.py` updated (both `SCENARIO_MODULE_MAP` and `yaml_name_map`)
 - [ ] `evaluation/expected_mappings.yaml` updated
-- [ ] `.github/workflows/redteam-on-demand.yml` dropdown updated
+- [ ] `runners/simulate.py` `SCENARIO_GROUPS` / pipeline gate updated (if part of a chain)
 - [ ] Tested with `--mode dry-run` locally

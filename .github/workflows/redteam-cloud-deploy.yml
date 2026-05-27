@@ -1,12 +1,14 @@
 name: RedTeam — Cloud Deploy (real AWS, OIDC)
 
-# Release → Deploy stage: runs the cloud kill chain against REAL AWS and confirms
-# detection from REAL CloudTrail. Authenticates with GitHub OIDC — no static keys.
+# Release → Deploy stage: runs the core kill chain and confirms detection.
+# Authenticates with GitHub OIDC — no static keys.
 #
-# Kill chain (--scenario cloud): Discovery (t8) → Privilege Escalation (t2) →
-# Exfiltration (t4). t8/t2 are read back from CloudTrail MANAGEMENT events
-# (free, Event history); t4's S3 GetObject are DATA events read back from the
-# CloudWatch Logs group the trail ships to (see infra/aws-bootstrap/cloud_scenarios.tf).
+# Kill chain (--scenario kill-chain): Initial Access (t1) → Privilege Escalation
+# (t2) → Exfiltration (t4). t1 is an SSH brute-force against an sshd on the runner
+# (host stage — self-reported auth_log, no AWS). t2 is read back from CloudTrail
+# MANAGEMENT events (free, Event history); t4's S3 GetObject are DATA events read
+# back from the CloudWatch Logs group the trail ships to (see
+# infra/aws-bootstrap/cloud_scenarios.tf).
 #
 # Prereqs (one-time, see infra/aws-bootstrap + setup_aws.md):
 #   • OIDC provider + redteam-deploy role + redteam-sandbox-boundary exist.
@@ -98,7 +100,23 @@ jobs:
       - name: Install runner dependencies
         run: pip install -r runners/requirements.txt
 
-      - name: Run cloud kill chain against real AWS (recon → T2 → exfil)
+      # T1 (Initial Access) runs against an sshd on the runner itself — it is a
+      # host scenario, not AWS. Same proven setup as the pipeline's LocalStack stage.
+      - name: Start sandbox SSH target (T1 — host Initial Access stage)
+        env:
+          REDTEAM_SSH_TEST_PASSWORD: ${{ secrets.REDTEAM_SSH_TEST_PASSWORD || 'RedteamPass123!' }}
+        run: |
+          sudo apt-get install -y openssh-server
+          sudo useradd -m -s /bin/bash redteam-test || true
+          echo "redteam-test:${REDTEAM_SSH_TEST_PASSWORD:-RedteamPass123!}" | sudo chpasswd
+          sudo mkdir -p /run/sshd
+          echo "Port 2222" | sudo tee /etc/ssh/sshd_config.d/redteam.conf
+          echo "PasswordAuthentication yes" | sudo tee -a /etc/ssh/sshd_config.d/redteam.conf
+          echo "MaxAuthTries 100" | sudo tee -a /etc/ssh/sshd_config.d/redteam.conf
+          sudo /usr/sbin/sshd
+          timeout 15 bash -c 'until nc -z 127.0.0.1 2222; do sleep 1; done' && echo "SSH ready on port 2222"
+
+      - name: Run kill chain — T1 (host) → T2 → T4 (real AWS) + CloudTrail readback
         env:
           REDTEAM_CLOUD_MODE: "aws"
           REDTEAM_CLOUDTRAIL_REGION: ${{ env.AWS_REGION }}
@@ -106,9 +124,12 @@ jobs:
           REDTEAM_CLOUDTRAIL_INTERVAL: "30"
           # CloudWatch Logs group the trail ships S3 DATA events to (t4 readback).
           REDTEAM_TRAIL_LOG_GROUP: "/aws/cloudtrail/redteam-sandbox"
+          # T1 host stage: brute-force the local test account on the runner's sshd.
+          TARGET_SSH_HOST: localhost
+          REDTEAM_SSH_TEST_PASSWORD: ${{ secrets.REDTEAM_SSH_TEST_PASSWORD || 'RedteamPass123!' }}
         run: |
           python runners/simulate.py \
-            --scenario cloud \
+            --scenario kill-chain \
             --mode safe \
             --run-id ${{ github.run_id }} \
             --output artifacts/results.json
@@ -184,9 +205,9 @@ jobs:
             echo "| Field | Value |"
             echo "|-------|-------|"
             echo "| Run ID | ${{ github.run_id }} |"
-            echo "| Scenarios | Cloud kill chain: recon (t8) → privesc (t2) → exfil (t4) |"
-            echo "| Target | REAL AWS IAM + S3 (us-east-1) |"
-            echo "| Detection | CloudTrail management events (t8/t2) + S3 data events via CloudWatch Logs (t4) |"
+            echo "| Scenarios | Kill chain: t1 initial-access (host sshd) → t2 privesc → t4 exfil (real AWS) |"
+            echo "| Target | Runner sshd (t1) + REAL AWS IAM + S3 (us-east-1) |"
+            echo "| Detection | auth_log (t1) + CloudTrail management events (t2) + S3 data events via CloudWatch Logs (t4) |"
             echo "| Auth | GitHub OIDC → redteam-deploy (no static keys) |"
             echo "| Approval Ticket | ${{ inputs.approval_ticket }} |"
             echo "| Triggered by | ${{ github.actor }} |"

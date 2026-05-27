@@ -27,4 +27,4 @@ docker ps | grep redteam
 docker network ls | grep rt-sandbox
 ```
 
-The nightly cleanup job and the `teardown` step in each workflow both run with `if: always()`, so they execute even when the workflow is cancelled. Manual intervention is only needed if the runner itself crashes.
+The `teardown` step in each workflow runs with `if: always()`, so it executes even when the workflow is cancelled. Manual intervention is only needed if the runner itself crashes.

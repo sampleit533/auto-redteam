@@ -33,10 +33,19 @@ SCENARIO_MODULE_MAP = {
     "t8_cloud_recon": "t8_cloud_recon",
 }
 
-# Named scenario groups. `--scenario cloud` runs the AWS kill chain in order:
-#   Discovery (t8) → Privilege Escalation (t2) → Exfiltration (t4)
-# These three are the ones deployed to REAL AWS (see redteam-cloud-deploy.yml).
+# Named scenario groups.
+#   `--scenario kill-chain` = the documented CORE chain (host → cloud):
+#       Initial Access (t1, host sshd) → Privilege Escalation (t2) → Exfiltration (t4)
+#       t1 brute-forces an sshd on the runner; t2/t4 run on REAL AWS in cloud-mode.
+#       This is what the pipeline gate + redteam-cloud-deploy.yml run.
+#   `--scenario cloud` = full cloud chain incl. the recon lead-in (t8 extension):
+#       Discovery (t8) → Privilege Escalation (t2) → Exfiltration (t4), all on AWS.
 SCENARIO_GROUPS = {
+    "kill-chain": [
+        "t1_bruteforce_ssh",
+        "t2_privilege_escalation",
+        "t4_data_exfiltration",
+    ],
     "cloud": [
         "t8_cloud_recon",
         "t2_privilege_escalation",

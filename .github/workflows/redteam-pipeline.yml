@@ -7,10 +7,11 @@ name: RedTeam — CI/CD Pipeline
 #                                       push to main ───┘──► Deploy (real AWS)
 #
 # Fast feedback on every change runs against a FAKE cloud (LocalStack); the very
-# same cloud kill chain (recon t8 → privesc t2 → exfil t4) is then promoted to the
-# REAL cloud on merge to main, behind the `aws-sandbox` environment approval gate.
-# The deploy stage is the reusable redteam-cloud-deploy.yml workflow (single
-# source of truth, no duplication).
+# same core kill chain (t1 initial-access → t2 privesc → t4 exfil) is then promoted
+# to the REAL cloud on merge to main, behind the `aws-sandbox` environment approval
+# gate. t1 brute-forces an sshd on the runner (host stage); t2/t4 use LocalStack in
+# CI and real AWS in deploy. The deploy stage is the reusable redteam-cloud-deploy.yml
+# workflow (single source of truth, no duplication).
 
 on:
   push:
@@ -74,9 +75,9 @@ jobs:
             | tar -xz gitleaks
           ./gitleaks detect --source . --no-banner --redact --exit-code 1
 
-  # ── Stage 2: Build & Test — run T2 against a fake cloud (LocalStack) ─────────
+  # ── Stage 2: Build & Test — run the kill chain against a fake cloud (LocalStack) ──
   build-test:
-    name: Build & Test — cloud chain on LocalStack
+    name: Build & Test — kill chain on LocalStack
     runs-on: ubuntu-latest
     needs: lint
     env:
@@ -112,15 +113,31 @@ jobs:
           curl -sf http://localhost:4566/_localstack/health > /dev/null \
             || { echo "LocalStack failed to start"; docker logs localstack; exit 1; }
 
-      - name: Run cloud kill chain (safe, against LocalStack)
+      - name: Start sandbox SSH target (T1 — host Initial Access stage)
         env:
-          # REDTEAM_CLOUD_MODE intentionally unset -> LocalStack backend; the same
-          # 3 scenarios (recon → T2 → exfil) that get promoted to real AWS.
+          REDTEAM_SSH_TEST_PASSWORD: ${{ secrets.REDTEAM_SSH_TEST_PASSWORD || 'RedteamPass123!' }}
+        run: |
+          sudo apt-get install -y openssh-server
+          sudo useradd -m -s /bin/bash redteam-test || true
+          echo "redteam-test:${REDTEAM_SSH_TEST_PASSWORD:-RedteamPass123!}" | sudo chpasswd
+          sudo mkdir -p /run/sshd
+          echo "Port 2222" | sudo tee /etc/ssh/sshd_config.d/redteam.conf
+          echo "PasswordAuthentication yes" | sudo tee -a /etc/ssh/sshd_config.d/redteam.conf
+          echo "MaxAuthTries 100" | sudo tee -a /etc/ssh/sshd_config.d/redteam.conf
+          sudo /usr/sbin/sshd
+          timeout 15 bash -c 'until nc -z 127.0.0.1 2222; do sleep 1; done' && echo "SSH ready on port 2222"
+
+      - name: Run kill chain (safe — T1 host + T2/T4 on LocalStack)
+        env:
+          # REDTEAM_CLOUD_MODE intentionally unset -> LocalStack backend for t2/t4;
+          # the same 3 scenarios (t1 → t2 → t4) that get promoted to real AWS.
           REDTEAM_IAM_PRINCIPAL: ci-${{ github.run_id }}
           REDTEAM_CI_ACTOR: ci-${{ github.run_id }}
+          TARGET_SSH_HOST: localhost
+          REDTEAM_SSH_TEST_PASSWORD: ${{ secrets.REDTEAM_SSH_TEST_PASSWORD || 'RedteamPass123!' }}
         run: |
           python runners/simulate.py \
-            --scenario cloud \
+            --scenario kill-chain \
             --mode safe \
             --run-id ${{ github.run_id }} \
             --output artifacts/results.json
@@ -137,7 +154,7 @@ jobs:
           python - <<'PY'
           import json, sys
           data = json.load(open("artifacts/evaluation.json"))
-          required = ["t8_cloud_recon", "t2_privilege_escalation", "t4_data_exfiltration"]
+          required = ["t1_bruteforce_ssh", "t2_privilege_escalation", "t4_data_exfiltration"]
           by_id = {s["scenario_id"]: s for s in data["scenarios"]}
           ok = True
           for sid in required:
@@ -160,11 +177,13 @@ jobs:
           path: artifacts/
           retention-days: 14
 
-      - name: Teardown LocalStack
+      - name: Teardown sandbox (LocalStack + sshd)
         if: always()
-        run: docker rm -f localstack || true
+        run: |
+          docker rm -f localstack || true
+          sudo pkill sshd || true
 
-  # ── Stage 3: Deploy — promote T2 to REAL AWS (main only, gated) ─────────────
+  # ── Stage 3: Deploy — promote the kill chain to REAL AWS (main only, gated) ──
   deploy:
     name: Deploy — promote to real AWS
     needs: build-test
