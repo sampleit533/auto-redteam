@@ -21,7 +21,7 @@ cùng quan hệ giữa chúng. *(Các sơ đồ phía dưới — luồng thành
 
 ```mermaid
 flowchart TB
-    actors["Người dùng và người tiêu thụ<br/>Developer / Operator / Cron — trigger<br/>Giảng viên / Security reviewer — xem báo cáo"]
+    actors["Người dùng và người tiêu thụ<br/>Developer / Operator — push/PR trigger<br/>Giảng viên / Security reviewer — xem báo cáo"]
 
     subgraph GH["GitHub — SCM + Control Plane"]
         direction TB

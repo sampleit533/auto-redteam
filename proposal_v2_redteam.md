@@ -93,7 +93,7 @@ vòng đời 1 run, hạ tầng OIDC) được trình bày trong
 
 ```mermaid
 flowchart TB
-    actors["Người dùng và người tiêu thụ<br/>Developer / Operator / Cron — trigger<br/>Giảng viên / Security reviewer — xem báo cáo"]
+    actors["Người dùng và người tiêu thụ<br/>Developer / Operator — push/PR trigger<br/>Giảng viên / Security reviewer — xem báo cáo"]
 
     subgraph GH["GitHub — SCM + Control Plane"]
         direction TB
@@ -314,7 +314,7 @@ và đã triển khai end-to-end:
 | Pipeline runtime | đủ nhanh để demo | CI ~vài phút; deploy AWS ~3' |
 | Safety | không tác động ra ngoài sandbox | ✅ zero blast radius, tự dọn |
 
-**Sản phẩm bàn giao:** Git repo đầy đủ (scenario YAML, runner, 4 workflow, Terraform
+**Sản phẩm bàn giao:** Git repo đầy đủ (scenario YAML, runner, 2 workflow, Terraform
 Docker + AWS bootstrap, evaluator, report/trends/Sigma); **3 kịch bản cốt lõi T1/T2/T4**
 (+5 kịch bản mở rộng); chuỗi tấn công host→cloud chạy xanh trên AWS thật; báo cáo + trend
 dashboard + Sigma rules; pcap + Snort/NIDS-lite artifacts; script `run-local.sh` tái lập
