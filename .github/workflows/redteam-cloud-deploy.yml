@@ -1,0 +1,161 @@
+name: RedTeam — Cloud Deploy (real AWS, OIDC)
+
+# Release → Deploy stage: runs T2 against REAL AWS IAM and confirms detection
+# from REAL CloudTrail. Authenticates with GitHub OIDC — no static AWS keys.
+#
+# Prereqs (one-time, see infra/aws-bootstrap + setup_aws.md):
+#   • OIDC provider + redteam-deploy role + redteam-sandbox-boundary exist.
+#   • Repo variables (Settings → Secrets and variables → Actions → Variables):
+#       AWS_DEPLOY_ROLE_ARN          (falls back to the bootstrapped default)
+#       REDTEAM_SANDBOX_BOUNDARY_ARN (falls back to the bootstrapped default)
+
+on:
+  workflow_dispatch:
+    inputs:
+      approval_ticket:
+        description: 'Approval ticket ID (required)'
+        required: true
+        type: string
+      cloudtrail_timeout:
+        description: 'Max seconds to wait for CloudTrail (latency ~5-15 min)'
+        required: false
+        type: string
+        default: '900'
+
+# OIDC needs id-token: write. contents: read for checkout.
+permissions:
+  id-token: write
+  contents: read
+
+# Never run two real-cloud jobs at once (cost + IAM name clashes).
+concurrency:
+  group: redteam-cloud-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1   # IAM is global; CloudTrail logs it in us-east-1
+  AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN || 'arn:aws:iam::406953137587:role/redteam-deploy' }}
+  REDTEAM_SANDBOX_BOUNDARY_ARN: ${{ vars.REDTEAM_SANDBOX_BOUNDARY_ARN || 'arn:aws:iam::406953137587:policy/redteam-sandbox-boundary' }}
+
+jobs:
+  preflight:
+    name: Preflight — validate approval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check approval ticket
+        run: |
+          if [ -z "${{ github.event.inputs.approval_ticket }}" ]; then
+            echo "ERROR: No approval ticket provided. Aborting."; exit 1
+          fi
+          echo "Approval ticket: ${{ github.event.inputs.approval_ticket }}"
+          echo "Triggered by:    ${{ github.actor }}"
+
+  deploy:
+    name: Run T2 on real AWS + read CloudTrail
+    runs-on: ubuntu-latest
+    needs: preflight
+    # Optional manual gate: add 'Required reviewers' to this environment in
+    # repo settings to require approval before touching real cloud.
+    environment: aws-sandbox
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC — no static keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: redteam-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify assumed identity
+        run: aws sts get-caller-identity
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install runner dependencies
+        run: pip install -r runners/requirements.txt
+
+      - name: Run T2 against real AWS IAM
+        env:
+          REDTEAM_CLOUD_MODE: "aws"
+          REDTEAM_CLOUDTRAIL_REGION: ${{ env.AWS_REGION }}
+          REDTEAM_CLOUDTRAIL_TIMEOUT: ${{ github.event.inputs.cloudtrail_timeout }}
+          REDTEAM_CLOUDTRAIL_INTERVAL: "30"
+        run: |
+          python runners/simulate.py \
+            --scenario t2_privilege_escalation \
+            --mode safe \
+            --run-id ${{ github.run_id }} \
+            --output artifacts/results.json
+
+      - name: Evaluate detections (real CloudTrail observables)
+        if: always()
+        run: |
+          python evaluation/evaluate_results.py \
+            --results artifacts/results.json \
+            --mappings evaluation/expected_mappings.yaml \
+            --out artifacts/evaluation.json
+
+      - name: Generate report
+        if: always()
+        run: |
+          python reporting/generate_report.py \
+            --evaluation artifacts/evaluation.json \
+            --template reporting/templates/report.html.j2 \
+            --out artifacts/report.html || true
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: redteam-cloud-${{ github.run_id }}
+          path: artifacts/
+          retention-days: 30
+
+      # Safety net: the T2 runner cleans up its own IAM resources, but if the
+      # job was cancelled mid-run, sweep any leftover sandbox-pathed principals.
+      - name: Sweep leftover sandbox principals
+        if: always()
+        run: |
+          for r in $(aws iam list-roles --path-prefix /redteam-sandbox/ \
+                      --query 'Roles[].RoleName' --output text); do
+            echo "Cleaning role $r"
+            for p in $(aws iam list-attached-role-policies --role-name "$r" \
+                        --query 'AttachedPolicies[].PolicyArn' --output text); do
+              aws iam detach-role-policy --role-name "$r" --policy-arn "$p" || true
+            done
+            aws iam delete-role --role-name "$r" || true
+          done
+          for u in $(aws iam list-users --path-prefix /redteam-sandbox/ \
+                      --query 'Users[].UserName' --output text); do
+            echo "Cleaning user $u"
+            for k in $(aws iam list-access-keys --user-name "$u" \
+                        --query 'AccessKeyMetadata[].AccessKeyId' --output text); do
+              aws iam delete-access-key --user-name "$u" --access-key-id "$k" || true
+            done
+            aws iam delete-user --user-name "$u" || true
+          done
+
+  summary:
+    name: Post summary
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+    steps:
+      - name: Write job summary
+        run: |
+          {
+            echo "## RedTeam Cloud Deploy"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Run ID | ${{ github.run_id }} |"
+            echo "| Target | REAL AWS IAM (us-east-1) |"
+            echo "| Auth | GitHub OIDC → redteam-deploy (no static keys) |"
+            echo "| Approval Ticket | ${{ github.event.inputs.approval_ticket }} |"
+            echo "| Triggered by | ${{ github.actor }} |"
+          } >> $GITHUB_STEP_SUMMARY
