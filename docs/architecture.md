@@ -21,7 +21,7 @@ cùng quan hệ giữa chúng. *(Các sơ đồ phía dưới — luồng thành
 
 ```mermaid
 flowchart TB
-    actors["Người dùng và người tiêu thụ<br/>Developer / Operator — push/PR trigger<br/>Giảng viên / Security reviewer — xem báo cáo"]
+    actors["Người dùng và Consumer<br/>Developer / Operator — push/PR trigger<br/>Approver / Security reviewer — xem báo cáo"]
 
     subgraph GH["GitHub — SCM + Control Plane"]
         direction TB
@@ -98,7 +98,7 @@ flowchart LR
     eval["<b>Evaluator &amp; Mapping</b><br/>expected_mappings.yaml<br/>• ES-query / observable / composite<br/>• detection coverage"]
     gate["<b>Baseline &amp; Detection Gate</b><br/>check_baseline.py<br/>• gate 100% trước promote<br/>• chặn regression"]
     report["<b>Reporting</b><br/>• report.html<br/>• trends.html<br/>• Sigma export"]
-    admin(["Security reviewer /<br/>Giảng viên"])
+    admin(["Security reviewer /<br/>Approver"])
 
     trig --> sandbox --> runners --> telem --> eval --> gate --> report --> admin
 

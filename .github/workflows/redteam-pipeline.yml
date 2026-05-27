@@ -16,8 +16,10 @@ name: RedTeam — CI/CD Pipeline
 on:
   push:
     branches: [main]
+    paths-ignore: ['docs/**', '**.md']
   pull_request:
     branches: [main]
+    paths-ignore: ['docs/**', '**.md']
 
 # Read-only by default; the deploy job elevates to id-token for OIDC.
 permissions:

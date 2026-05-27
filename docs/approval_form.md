@@ -25,5 +25,5 @@ Complete this form and get it signed before triggering any simulation run.
 - [ ] Teardown will run automatically; manual cleanup procedure is known
 - [ ] Kill-switch procedure (`docs/kill_switch.md`) has been reviewed
 
-**Lab owner / Instructor signature:** _______________  
+**Lab owner / Approver signature:** _______________  
 **Date:** _______________

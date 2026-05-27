@@ -6,8 +6,6 @@
 
 **Tên chủ đề:** Red Team Automation trong pipeline CI/CD — Tự động hóa kiểm thử tấn công mô phỏng và kiểm chứng khả năng phát hiện (detection) trên cloud
 
-**GV hướng dẫn:** Nguyễn Ngọc Tự
-
 **Ngày báo cáo:** 27/05/2026
 
 </div>
@@ -93,7 +91,7 @@ vòng đời 1 run, hạ tầng OIDC) được trình bày trong
 
 ```mermaid
 flowchart TB
-    actors["Người dùng và người tiêu thụ<br/>Developer / Operator — push/PR trigger<br/>Giảng viên / Security reviewer — xem báo cáo"]
+    actors["Người dùng và Consumer<br/>Developer / Operator — push/PR trigger<br/>Approver / Security reviewer — xem báo cáo"]
 
     subgraph GH["GitHub — SCM + Control Plane"]
         direction TB
@@ -334,7 +332,7 @@ bằng 1 lệnh.
 
 ## 6. Đối chiếu outline và hướng mở rộng
 
-Đối chiếu chi tiết với outline mục tiêu của giảng viên tại
+Đối chiếu chi tiết với outline mục tiêu đề tài tại
 [`docs/reports/proposal-gap-review-2026-05-27.md`](docs/reports/proposal-gap-review-2026-05-27.md).
 Tóm tắt:
 

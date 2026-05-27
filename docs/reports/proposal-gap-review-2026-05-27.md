@@ -1,8 +1,8 @@
-# Đối chiếu đồ án với outline giảng viên — 2026-05-27
+# Đối chiếu đồ án với outline đề tài — 2026-05-27
 
 > Cập nhật của [proposal-gap-review-2026-04-08.md](proposal-gap-review-2026-04-08.md).
 > Lần này đối chiếu trạng thái **hiện tại** của repo (sau khi bổ sung T7, T8 và
-> chuỗi kill chain trên **AWS thật**) với **outline đề tài do giảng viên ấn định**
+> chuỗi kill chain trên **AWS thật**) với **outline đề tài được ấn định**
 > (`Đề tài 16: Red Team Automation trong pipeline CI/CD`).
 
 ---
@@ -12,13 +12,13 @@
 - **Proposal đã được duyệt (PDF)** là **Đề tài 5 — "Tự động phát hiện & khắc phục
   misconfigurations trên cloud bằng pipeline Ansible + công cụ quét (ScoutSuite,
   CloudSploit, Checkov)"**, môn *Kiến trúc & Bảo mật Điện toán Đám mây*.
-- **Outline mục tiêu do GV ấn định (MD)** lại là **Đề tài 16 — "Red Team Automation
+- **Outline mục tiêu được ấn định (MD)** lại là **Đề tài 16 — "Red Team Automation
   trong CI/CD"**.
 - **Repo này (`auto-redteam`) đang triển khai Đề tài 16 (Red Team)** — khớp với
   outline MD, **không khớp** với proposal misconfig đã duyệt.
 
-➡️ **Hành động cần làm (phía nhóm, ngoài phạm vi code):** xác nhận chính thức với GV
-rằng đề tài đã chuyển sang Red Team Automation, hoặc làm rõ proposal misconfig kia
+➡️ **Hành động cần làm (phía nhóm, ngoài phạm vi code):** xác nhận chính thức rằng
+đề tài đã chuyển sang Red Team Automation, hoặc làm rõ proposal misconfig kia
 thuộc môn/đề tài khác. Bản đối chiếu dưới đây giả định hướng **Red Team (Đề tài 16)**
 là đúng.
 
@@ -46,7 +46,7 @@ Chú thích: ✅ Đã làm · 🟡 Làm một phần / thay bằng phương án 
 | 14 | Milestones (14 tuần) | 🟡 | Trình bày theo **8 giai đoạn triển khai** thay vì theo tuần (đã ánh xạ trong proposal §IV) |
 | 15 | Deliverables | 🟡 | Repo ✅, sample artifacts ✅, runbooks ✅, trend dashboard ✅. **Chưa**: **demo video (5–10')**, **final report (15–25 trang)** |
 | 16 | Appendix scenario YAML | ✅ | `scenarios/T*.yaml` đúng schema template |
-| 17 | Ethical notes (instructor) | ✅ | approval_form.md có chữ ký GV/lab owner; tài khoản sandbox riêng |
+| 17 | Ethical notes (approver) | ✅ | approval_form.md có chữ ký approver/lab owner; tài khoản sandbox riêng |
 
 ---
 
