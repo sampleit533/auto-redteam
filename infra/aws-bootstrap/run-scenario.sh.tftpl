@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# =============================================================================
+# run-scenario.sh — execute ONE auto-redteam scenario from this EC2 foothold.
+#
+# Baked onto the instance by foothold.tf (user_data). The EC2 carries the
+# redteam-ec2-foothold instance profile, so boto3 picks those credentials up
+# from IMDS automatically: the scenario code is byte-for-byte the SAME as the
+# CI/OIDC path — only the origin of the API calls changes (this workload + its
+# IP), which is exactly what makes CloudTrail attribute the activity to a
+# "compromised cloud workload" instead of a CI runner.
+#
+#   sudo /opt/redteam/run-scenario.sh t2_privilege_escalation [run-id]
+#   sudo /opt/redteam/run-scenario.sh t4_data_exfiltration   [run-id]
+#
+# Runner code is pulled from the PRIVATE code bucket (no git credentials on the
+# box): an approver / the gated workflow first syncs the repo up with
+#   aws s3 sync . s3://${code_bucket}/repo --exclude '.git/*'
+# =============================================================================
+set -euo pipefail
+
+SCENARIO="$${1:-t2_privilege_escalation}"
+RUN_ID="$${2:-foothold-$(date +%s)}"
+REPO_DIR=/opt/redteam/repo
+ART_DIR="$REPO_DIR/artifacts"
+
+echo "[foothold] scenario=$SCENARIO run_id=$RUN_ID region=${region}"
+
+# 1. Pull the latest runner code from the private code bucket (instance role).
+mkdir -p "$REPO_DIR"
+aws s3 sync "s3://${code_bucket}/repo" "$REPO_DIR" --delete --region "${region}"
+
+cd "$REPO_DIR"
+python3.11 -m pip install --quiet -r runners/requirements.txt
+
+# 2. Real-AWS mode. boto3 reads the instance-profile creds from IMDS — no keys.
+export REDTEAM_CLOUD_MODE=aws
+export AWS_REGION="${region}"
+export REDTEAM_SANDBOX_BOUNDARY_ARN="${boundary_arn}"
+export REDTEAM_SANDBOX_PATH="${sandbox_path}"
+export REDTEAM_TRAIL_LOG_GROUP="${trail_log_group}"
+
+# 3. Run the single scenario. Secrets (access keys) are never printed by the
+#    scenario code itself; nothing here echoes credentials.
+#    `|| RC=$?` keeps `set -e` from aborting before we ship the artifact.
+RC=0
+python3.11 runners/simulate.py \
+  --scenario "$SCENARIO" \
+  --mode safe \
+  --run-id "$RUN_ID" \
+  --output "$ART_DIR/results.json" || RC=$?
+
+# 4. Ship the results back so the approver / workflow can collect them.
+if [ -f "$ART_DIR/results.json" ]; then
+  aws s3 cp "$ART_DIR/results.json" \
+    "s3://${code_bucket}/artifacts/$RUN_ID/results.json" --region "${region}" || true
+  echo "[foothold] results -> s3://${code_bucket}/artifacts/$RUN_ID/results.json"
+fi
+
+echo "[foothold] done (exit $RC)"
+exit $RC

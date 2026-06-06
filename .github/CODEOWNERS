@@ -1,0 +1,17 @@
+# Code owners — changes to these paths require an owner's review.
+# Pair with branch protection on main: "Require a pull request before merging"
+# + "Require review from Code Owners". Part of the authorization gate so a
+# scenario or real-cloud infra change cannot reach main without review.
+
+# Default: anything not matched below.
+*                       @sampleit533
+
+# Attack scenarios + detection mappings (security-sensitive behaviour).
+/scenarios/             @sampleit533
+/runners/               @sampleit533
+/evaluation/            @sampleit533
+
+# Real-cloud infrastructure and the CI authorization gate.
+/infra/                 @sampleit533
+/.github/workflows/     @sampleit533
+/.github/CODEOWNERS     @sampleit533

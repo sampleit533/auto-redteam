@@ -22,7 +22,7 @@ flowchart TB
         direction TB
         ga["<b>GitHub Actions — Orchestrator</b><br/>redteam-pipeline.yml<br/>redteam-cloud-deploy.yml (reusable)"]
         tf["<b>Terraform (HashiCorp)</b><br/>Docker provider<br/>+ aws-bootstrap (OIDC, role, boundary, trail)"]
-        oidc["<b>OIDC → AWS STS</b><br/>AssumeRoleWithWebIdentity<br/>role redteam-deploy<br/>boundary Deny *"]
+        oidc["<b>OIDC → AWS STS</b><br/>AssumeRoleWithWebIdentity<br/>role redteam-deploy<br/>trust: environment:aws-sandbox<br/>boundary Deny *"]
         ga --> tf
         ga --> oidc
     end
@@ -41,6 +41,7 @@ flowchart TB
     subgraph TGT["③ Target Environments"]
         direction TB
         sandbox["<b>Sandbox (CI)</b><br/>Docker: ssh / web / redis<br/>LocalStack (fake cloud)"]
+        ec2["<b>EC2 foothold</b><br/>workload bị chiếm (t3.micro)<br/>instance profile · SSM · no inbound"]
         aws["<b>Real AWS</b><br/>IAM / STS / S3 + CloudTrail<br/>tài nguyên redteam-sandbox-*"]
     end
 
@@ -52,7 +53,9 @@ flowchart TB
     tf -->|"provision ephemeral"| sandbox
     sim -->|"run kill chain (safe)"| sandbox
     gate -. "pass + merge main → promote" .-> oidc
-    oidc -->|"Deploy (zero static key)"| aws
+    oidc -->|"Deploy trực tiếp (zero static key)"| aws
+    oidc -->|"SSM SendCommand (gated)"| ec2
+    ec2 -->|"T2/T4 bằng instance role"| aws
     sandbox -->|"observables / logs"| col
     aws -->|"CloudTrail readback"| col
     rep -->|"artifacts / report"| reviewer
@@ -61,7 +64,7 @@ flowchart TB
     classDef box fill:#eef,stroke:#447,color:#000;
     classDef cloud fill:#fee,stroke:#a44,color:#000;
     classDef scm fill:#efe,stroke:#474,color:#000;
-    class ga,tf,sim,col,evalr,gate,rep,sandbox box;
+    class ga,tf,sim,col,evalr,gate,rep,sandbox,ec2 box;
     class oidc,aws cloud;
     class gh scm;
 ```
@@ -115,6 +118,51 @@ sequenceDiagram
     PIPE->>GH: Upload artifacts + commit status
     GH-->>Dev: Kết quả CI + report.html / trends / Sigma
 ```
+
+---
+
+## Hình C — Sequence: chạy T2/T4 trên EC2 foothold (SSM, có cổng uỷ quyền)
+
+Biến thể "compromised workload": thay vì CI runner tự gọi AWS, CI **ra lệnh qua SSM**
+cho một EC2 thật chạy kịch bản, nên CloudTrail quy trách nhiệm về **instance role +
+IP của EC2**. Ba lớp cổng uỷ quyền chặn trước khi chạm AWS thật.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Op as Actor (allowlisted)
+    participant GH as GitHub Actions<br/>(redteam-foothold-run)
+    participant ENV as Environment aws-sandbox<br/>(required reviewers)
+    participant STS as AWS STS / IAM
+    participant S3C as Code bucket<br/>redteam-foothold-code-*
+    participant SSM as AWS SSM
+    participant EC2 as EC2 foothold<br/>(instance profile)
+    participant AWS as IAM + S3 + CloudTrail
+
+    Op->>GH: workflow_dispatch (scenario + ticket)
+    GH->>GH: Preflight — actor allowlist?
+    GH->>ENV: Job yêu cầu environment aws-sandbox
+    ENV-->>GH: Required reviewer duyệt (manual)
+    GH->>STS: AssumeRoleWithWebIdentity<br/>(sub = ...:environment:aws-sandbox)
+    Note over STS: Không environment ⇒ sub sai ⇒ TỪ CHỐI
+    STS-->>GH: Credential tạm thời (redteam-deploy)
+    GH->>S3C: aws s3 sync repo (đẩy code lên)
+    GH->>EC2: StartInstances + chờ SSM Online
+    GH->>SSM: SendCommand → /opt/redteam/run-scenario.sh
+    SSM->>EC2: thực thi (chạy bằng instance role)
+    EC2->>S3C: pull repo (instance role, không git creds)
+    EC2->>AWS: T2 CreateRole→Attach→CreateKey · T4 PutObject/GetObject
+    Note over EC2,AWS: REDTEAM_CLOUD_MODE=aws<br/>boto3 lấy creds từ IMDS
+    AWS->>AWS: CloudTrail ghi userIdentity=redteam-ec2-foothold<br/>sourceIP = EC2
+    EC2->>AWS: Readback (LookupEvents + CW Logs) + self-clean
+    EC2->>S3C: upload results.json
+    GH->>S3C: tải results.json về làm artifact
+    GH-->>Op: report + detection coverage
+```
+
+> Quyền instance role tái dùng y nguyên từ role deploy (IAM chỉ dưới `/redteam-sandbox/`
+> + boundary `Deny *`, S3 chỉ `redteam-sandbox-*`) ⇒ "chiếm" được EC2 vẫn zero blast
+> radius. EC2 auto stop/start (~vài USD/3 tuần). Xem `infra/aws-bootstrap/foothold.md`.
 
 ---
 

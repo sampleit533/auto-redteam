@@ -56,6 +56,12 @@ variable "sandbox_path" {
   default     = "/redteam-sandbox/"
 }
 
+variable "deploy_environment" {
+  description = "GitHub Environment a job MUST be bound to in order to assume the deploy role via OIDC. The authorization gate: jobs without this environment cannot get AWS credentials."
+  type        = string
+  default     = "aws-sandbox"
+}
+
 data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
@@ -122,12 +128,15 @@ data "aws_iam_policy_document" "deploy_trust" {
       variable = "${local.oidc_host}:aud"
       values   = ["sts.amazonaws.com"]
     }
-    # ...and only for workflows in OUR repo (any branch/PR/tag).
-    # Tighten later to e.g. "repo:${var.github_repo}:environment:aws-sandbox".
+    # ...and ONLY from a job bound to the aws-sandbox Environment. This is the
+    # enforcement half of the authorization gate: a workflow job WITHOUT
+    # `environment: ${var.deploy_environment}` cannot obtain AWS credentials,
+    # even on our default branch. Required reviewers on that environment supply
+    # the human approval. (Was "repo:${var.github_repo}:*" during early bring-up.)
     condition {
-      test     = "StringLike"
+      test     = "StringEquals"
       variable = "${local.oidc_host}:sub"
-      values   = ["repo:${var.github_repo}:*"]
+      values   = ["repo:${var.github_repo}:environment:${var.deploy_environment}"]
     }
   }
 }

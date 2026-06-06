@@ -158,7 +158,9 @@ Splunk / ES / Sentinel.
 auto-redteam/
 ├── .github/workflows/
 │   ├── redteam-pipeline.yml        # Continuous CI/CD: push/PR → lint → LocalStack → deploy
-│   └── redteam-cloud-deploy.yml    # Reusable: promote kill chain to real AWS (OIDC, approval gate)
+│   ├── redteam-cloud-deploy.yml    # Reusable: promote kill chain to real AWS (OIDC, approval gate)
+│   └── redteam-foothold-run.yml    # Run T2/T4 ON a real EC2 foothold via SSM (gated)
+├── .github/CODEOWNERS              # Review gate on scenarios/, runners/, infra/, workflows/
 ├── scenarios/                       # Scenario definitions (YAML, versioned)
 │   ├── T1_bruteforce_ssh.yaml
 │   ├── T2_privilege_escalation.yaml
@@ -195,6 +197,9 @@ auto-redteam/
 ├── infra/
 │   ├── main.tf                      # Terraform sandbox (Docker provider)
 │   └── aws-bootstrap/               # OIDC provider, redteam-deploy role, boundary, CloudTrail trail
+│       ├── foothold.tf              # EC2 foothold (instance profile, SSM, auto stop/start)
+│       ├── run-scenario.sh.tftpl    # On-EC2 runner: pull code → run scenario → push results
+│       └── foothold.md              # Foothold setup / run / cost / teardown
 └── docs/
     ├── approval_form.md
     ├── runbook.md

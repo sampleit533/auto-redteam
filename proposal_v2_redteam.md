@@ -115,7 +115,8 @@ flowchart TB
 
     subgraph ENVB["Môi trường mục tiêu B — AWS THẬT (acct 406953137587) — trust boundary"]
         direction TB
-        oidc["OIDC provider + role redteam-deploy<br/>permissions boundary Deny *"]
+        oidc["OIDC provider + role redteam-deploy<br/>trust: environment:aws-sandbox<br/>permissions boundary Deny *"]
+        ec2["EC2 foothold (t3.micro)<br/>instance profile redteam-ec2-foothold<br/>chạy T2/T4 — SSM, không inbound"]
         awsres["IAM · S3<br/>namespace redteam-sandbox-*"]
         ct["CloudTrail trail<br/>→ CloudWatch Logs"]
     end
@@ -128,6 +129,8 @@ flowchart TB
     sim -->|"tấn công mô phỏng"| tgt
     sim -->|"tấn công mô phỏng"| lstack
     sim -->|"tấn công mô phỏng (cloud-mode)"| awsres
+    oidc -->|"SSM SendCommand (gated)"| ec2
+    ec2 -->|"T2/T4 bằng instance role<br/>(workload bị chiếm)"| awsres
     awsres --> ct
     sens -->|"pcap / alert"| det
     lstack -->|"events"| det
@@ -142,7 +145,7 @@ flowchart TB
     class repo,gha gh;
     class sim,det,rep eng;
     class tgt,lstack,sens enva;
-    class oidc,awsres,ct envb;
+    class oidc,ec2,awsres,ct envb;
 ```
 *Hình 1. Sơ đồ kiến trúc hệ thống auto-redteam (góc nhìn cấu trúc + triển khai theo
 vùng tin cậy). Phiên bản đầy đủ kèm các sơ đồ bổ trợ: `docs/architecture.md`.*
@@ -156,7 +159,9 @@ vùng tin cậy). Phiên bản đầy đủ kèm các sơ đồ bổ trợ: `doc
 - **Môi trường mục tiêu A (Docker sandbox):** targets + LocalStack (fake cloud) + network
   sensors.
 - **Môi trường mục tiêu B (AWS thật):** role OIDC + permissions boundary `Deny *`, IAM/S3
-  sandbox, CloudTrail → CloudWatch Logs.
+  sandbox, CloudTrail → CloudWatch Logs. Kịch bản T2/T4 chạy trên AWS thật theo **hai
+  cách**: trực tiếp từ CI runner (OIDC), hoặc **trên một EC2 foothold** (mô phỏng workload
+  bị chiếm) — CI ra lệnh qua SSM, CloudTrail quy trách nhiệm về instance role + IP của EC2.
 - **Quan hệ chính** (kiến trúc, không phải thứ tự thời gian): *kích hoạt*, *điều phối*,
   *OIDC assume*, *tấn công mô phỏng (act-on)*, *thu thập telemetry*, *sinh báo cáo*.
 
@@ -172,9 +177,15 @@ Thành phần điều phối kích hoạt, đảm bảo việc kiểm thử di�
   vào `main`. Nối 3 stage: Code → Build&Test → Deploy. Là "xương sống" của hệ thống.
 - **`redteam-cloud-deploy.yml`** — workflow *reusable* deploy chuỗi kill-chain lên AWS
   thật qua OIDC; được `redteam-pipeline` gọi lại ở stage Deploy (có **approval gate**).
+- **`redteam-foothold-run.yml`** — chạy một kịch bản (T2/T4) **trên EC2 foothold** qua SSM
+  (mô hình "compromised workload"); có cổng uỷ quyền (actor allowlist + required reviewers
+  + OIDC khoá theo environment).
 
 Cơ chế kiểm soát: chỉ khi qua **detection gate** (coverage 100% trên LocalStack) và
-**environment gate** (`aws-sandbox`) thì pipeline mới promote lên AWS thật.
+**environment gate** (`aws-sandbox`) thì pipeline mới promote lên AWS thật. Cổng uỷ quyền
+chạm-AWS gồm ba lớp: **actor allowlist → required reviewers (environment `aws-sandbox`) →
+OIDC `sub` khoá theo `:environment:aws-sandbox`** (job không có environment ⇒ không lấy
+được credential).
 
 ### 2.2. Sandbox & Target Environments
 
@@ -186,12 +197,21 @@ Môi trường mục tiêu bị cách ly, ephemeral, gồm hai lớp:
   Terraform (`infra/main.tf`, Docker provider) quản network cách ly.
 - **Lớp cloud thật (AWS bootstrap):** `infra/aws-bootstrap/` tạo (một lần, bằng
   Terraform): **GitHub OIDC provider**, role **`redteam-deploy`** (trust khoá theo
-  `repo:sampleit533/auto-redteam:*`), **permissions boundary `redteam-sandbox-boundary`
-  (`Deny *`)**, và một **CloudTrail trail** single-region us-east-1 với *advanced event
-  selector* bắt S3 data events → CloudWatch Logs.
+  `repo:sampleit533/auto-redteam:environment:aws-sandbox`), **permissions boundary
+  `redteam-sandbox-boundary` (`Deny *`)**, và một **CloudTrail trail** single-region
+  us-east-1 với *advanced event selector* bắt S3 data events → CloudWatch Logs.
+- **Lớp EC2 foothold (`infra/aws-bootstrap/foothold.tf`):** một **EC2 t3.micro** (Amazon
+  Linux 2023, không mở inbound, điều khiển qua **SSM Session Manager**) mang instance
+  profile `redteam-ec2-foothold` — *tái dùng y nguyên* quyền của role deploy (IAM chỉ dưới
+  `/redteam-sandbox/` + boundary, S3 chỉ `redteam-sandbox-*`). Chạy mã runner **không đổi**
+  trên EC2 ⇒ `boto3` lấy credential từ IMDS, biến nó thành *workload bị chiếm*. Mã được
+  kéo từ một **code bucket riêng** (không prefix `redteam-sandbox-`, tránh nhiễu T4). EC2
+  **auto stop/start** (EventBridge Scheduler) để chi phí ~vài USD cho cả vòng đời đồ án.
 
 Mọi tài nguyên nằm trong namespace `redteam-sandbox-*` / IAM path `/redteam-sandbox/`
-và được tạo trước, dọn sau mỗi lần chạy.
+và được tạo trước, dọn sau mỗi lần chạy. **"Server thật" đóng vai bàn đạp tấn công, không
+phải kho dữ liệu** — T4 vẫn rút từ **S3 thật** để `GetObject` còn là CloudTrail data event
+phát hiện được.
 
 ### 2.3. Attack Simulation Runners
 

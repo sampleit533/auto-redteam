@@ -45,7 +45,8 @@ flowchart TB
 
     subgraph ENVB["Môi trường mục tiêu B — AWS THẬT (acct 406953137587) — trust boundary"]
         direction TB
-        oidc["OIDC provider + role redteam-deploy<br/>permissions boundary Deny *"]
+        oidc["OIDC provider + role redteam-deploy<br/>trust: environment:aws-sandbox<br/>permissions boundary Deny *"]
+        ec2["EC2 foothold (t3.micro)<br/>instance profile redteam-ec2-foothold<br/>chạy T2/T4 — SSM, không inbound"]
         awsres["IAM · S3<br/>namespace redteam-sandbox-*"]
         ct["CloudTrail trail<br/>→ CloudWatch Logs"]
     end
@@ -58,6 +59,8 @@ flowchart TB
     sim -->|"tấn công mô phỏng"| tgt
     sim -->|"tấn công mô phỏng"| lstack
     sim -->|"tấn công mô phỏng (cloud-mode)"| awsres
+    oidc -->|"SSM SendCommand (gated)"| ec2
+    ec2 -->|"T2/T4 bằng instance role<br/>(workload bị chiếm)"| awsres
     awsres --> ct
     sens -->|"pcap / alert"| det
     lstack -->|"events"| det
@@ -72,14 +75,14 @@ flowchart TB
     class repo,gha gh;
     class sim,det,rep eng;
     class tgt,lstack,sens enva;
-    class oidc,awsres,ct envb;
+    class oidc,ec2,awsres,ct envb;
 ```
 
 **Cách đọc Hình 1:**
 - **GitHub (control plane):** repo giữ toàn bộ assets (Scenario-as-Code, mappings, IaC, Sigma); GitHub Actions là bộ điều phối + cấp quyền OIDC.
 - **Engine (trên CI runner):** simulation (lõi T1/T2/T4, + kịch bản mở rộng) → detection/evaluation → reporting.
 - **Môi trường mục tiêu A (Docker sandbox):** targets + LocalStack (fake cloud) + network sensors.
-- **Môi trường mục tiêu B (AWS thật):** role OIDC + permissions boundary `Deny *`, IAM/S3 sandbox, CloudTrail → CloudWatch Logs.
+- **Môi trường mục tiêu B (AWS thật):** role OIDC + permissions boundary `Deny *`, IAM/S3 sandbox, CloudTrail → CloudWatch Logs. **Hai cách chạy kịch bản trên AWS thật:** (a) trực tiếp từ CI runner qua OIDC; (b) **trên một EC2 foothold** — mô phỏng workload bị chiếm: CI dùng SSM ra lệnh chạy T2/T4 *trên* EC2, nên CloudTrail quy trách nhiệm về **instance role + IP của EC2** (xem §3b).
 - **Quan hệ chính** (kiến trúc, không phải thứ tự thời gian): *kích hoạt*, *điều phối*, *OIDC assume*, *tấn công mô phỏng (act-on)*, *thu thập telemetry*, *sinh báo cáo*.
 
 ---
@@ -218,7 +221,7 @@ mở rộng: T5/T8).
 ```mermaid
 flowchart TD
     gha[GitHub Actions job<br/>id-token: write] -->|OIDC token| idp[AWS IAM OIDC provider<br/>token.actions.githubusercontent.com]
-    idp -->|trust: repo:sampleit533/auto-redteam:*| role[Role redteam-deploy<br/>session redteam-RUNID]
+    idp -->|trust: repo:sampleit533/auto-redteam:environment:aws-sandbox| role[Role redteam-deploy<br/>session redteam-RUNID]
     role -->|scoped perms + permissions boundary Deny-*| acts
 
     t1h[T1 — host stage trên runner<br/>SSH brute-force sshd:2222<br/>KHÔNG chạm AWS — self-report auth_log]
@@ -254,15 +257,71 @@ flowchart TD
 
 ---
 
+## 3b. Foothold — chạy kịch bản trên EC2 thật (mô hình "compromised workload")
+
+Ngoài cách chạy trực tiếp từ CI runner (§3), kịch bản **T2 (IAM privesc)** và **T4
+(S3 bulk read)** có thể chạy **trên một EC2 thật** đóng vai *workload bị chiếm*. EC2
+mang **instance profile** nên `boto3` tự lấy credential từ IMDS — **mã runner không
+đổi một dòng**; chỉ *nơi phát lệnh* đổi, khiến CloudTrail quy trách nhiệm về
+**instance role + IP của EC2** thay vì CI runner. Đây là câu chuyện adversary-emulation
+sát thực tế nhất cho việc kiểm chứng phát hiện.
+
+> **"Server thật" là bàn đạp của attacker, KHÔNG phải kho dữ liệu.** T4 vẫn rút từ
+> **S3 thật** (`redteam-sandbox-*`) — đó mới là cái khiến `GetObject` là một CloudTrail
+> *data event* phát hiện được. Bê data lên đĩa EC2 sẽ thành đọc file local, **mất sạch
+> tín hiệu CloudTrail**. EC2 = compute/foothold, S3 = kho cloud thật — mỗi thứ đúng vai.
+
+```mermaid
+flowchart TD
+    actor([Actor hợp lệ]) -->|"workflow_dispatch + ticket"| gate
+
+    subgraph gate [" Cổng uỷ quyền — ai hợp lệ mới push được "]
+        allow[1 · actor allowlist<br/>FOOTHOLD_ALLOWED_ACTORS]
+        rev[2 · Required reviewers<br/>environment aws-sandbox]
+        sub[3 · OIDC sub = environment:aws-sandbox<br/>không environment ⇒ không có creds]
+        allow --> rev --> sub
+    end
+
+    sub -->|"AssumeRoleWithWebIdentity"| role[Role redteam-deploy<br/>+ quyền lái foothold qua SSM]
+    role -->|"s3 sync repo"| code[(Code bucket riêng<br/>redteam-foothold-code-*<br/>KHÔNG prefix sandbox)]
+    role -->|"StartInstances + SSM SendCommand"| ec2
+
+    subgraph ec2box [" EC2 foothold (t3.micro, no inbound, IMDSv2) "]
+        ec2[run-scenario.sh<br/>REDTEAM_CLOUD_MODE=aws<br/>instance profile redteam-ec2-foothold]
+    end
+    code -. "pull code (instance role)" .-> ec2
+
+    ec2 -->|"T2: CreateRole→Attach→CreateKey<br/>(path /redteam-sandbox/ + boundary)"| iam[IAM thật]
+    ec2 -->|"T4: bucket redteam-sandbox-t4-*<br/>PutObject xN → GetObject xN"| s3[S3 thật]
+    iam --> ctm[CloudTrail mgmt events<br/>userIdentity = redteam-ec2-foothold<br/>sourceIP = EC2]
+    s3 --> ctd[S3 data events → CloudWatch Logs<br/>/aws/cloudtrail/redteam-sandbox]
+    ctm --> back[Đọc lại để chấm detection]
+    ctd --> back
+
+    classDef g fill:#eef,stroke:#447,color:#000;
+    classDef c fill:#fee,stroke:#a44,color:#000;
+    class allow,rev,sub g;
+    class ec2,iam,s3,ctm,ctd,code,role c;
+```
+
+> Điều khiển qua **SSM Session Manager** (không mở port, không SSH key). EC2 **auto
+> stop/start** theo lịch (EventBridge Scheduler) để giữ chi phí ~vài USD cho cả 3 tuần.
+> Quyền của instance role được **tái dùng y nguyên** từ role deploy (chỉ IAM dưới
+> `/redteam-sandbox/` + boundary, chỉ S3 `redteam-sandbox-*`) ⇒ "chiếm" được EC2 vẫn
+> **zero blast radius**. Chi tiết: `infra/aws-bootstrap/foothold.md`.
+
+---
+
 ## 4. Tổ chức repo (ánh xạ thành phần → thư mục)
 
 | Thành phần kiến trúc | Thư mục / file |
 |---|---|
-| Orchestration (CI/CD) | `.github/workflows/` — `redteam-pipeline.yml`, `redteam-cloud-deploy.yml` |
+| Orchestration (CI/CD) | `.github/workflows/` — `redteam-pipeline.yml`, `redteam-cloud-deploy.yml`, `redteam-foothold-run.yml` |
+| Cổng uỷ quyền | `.github/CODEOWNERS`, OIDC trust `environment:aws-sandbox` (`infra/aws-bootstrap/main.tf`), required reviewers + actor allowlist |
 | Scenario-as-Code | `scenarios/T1..T8_*.yaml` |
 | Simulation runners | `runners/simulate.py`, `runners/scenarios/t1..t8_*.py`, `cloudtrail_util.py`, `s3log_util.py`, `nids_lite.py`, `snort_util.py`, `pcap_util.py` |
 | Sandbox targets | `targets/` (docker-compose, ssh-target, pcap-recorder, snort-runner) |
-| IaC hạ tầng | `infra/main.tf` (Docker), `infra/aws-bootstrap/` (OIDC, role, boundary, CloudTrail trail) |
+| IaC hạ tầng | `infra/main.tf` (Docker), `infra/aws-bootstrap/` (OIDC, role, boundary, CloudTrail trail, `foothold.tf` EC2 + `run-scenario.sh.tftpl`) |
 | Telemetry | `collection/filebeat.yml`, pcap/Snort/CloudTrail utils |
 | Detection mapping & evaluator | `evaluation/expected_mappings.yaml`, `evaluate_results.py`, `check_baseline.py`, `baseline.json`, `export_sigma.py` |
 | Sigma rules (export) | `sigma/*.yml` |
@@ -295,3 +354,10 @@ flowchart TD
 Access — `sshd` trên runner) → T2 (PrivEsc) → T4 (Exfiltration)**; T2/T4 trên AWS thật
 với cả hai loại bằng chứng CloudTrail (management + data events). Biến thể `--scenario
 cloud` (**T8 → T2 → T4**, recon dẫn đầu) vẫn còn trong repo như kịch bản mở rộng.
+
+**Nơi chạy T2/T4 trên AWS thật — hai biến thể (cùng một mã runner):**
+
+| Biến thể | Định danh trong CloudTrail | Câu chuyện |
+|---|---|---|
+| CI runner qua OIDC (§3) | `assumed-role/redteam-deploy/redteam-<run_id>`, sourceIP = runner | "CI tự kiểm chứng" |
+| **EC2 foothold qua SSM (§3b)** | `assumed-role/redteam-ec2-foothold/<id>`, **sourceIP = EC2** | **"workload bị chiếm tự leo quyền"** — sát thực tế |
