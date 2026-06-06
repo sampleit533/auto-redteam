@@ -65,10 +65,24 @@ data "aws_vpc" "default" {
   default = true
 }
 
+# Only AZs that actually offer the chosen instance type (e.g. t3.micro is not
+# available in us-east-1e), so the picked subnet is always launchable.
+data "aws_ec2_instance_type_offerings" "foothold_azs" {
+  filter {
+    name   = "instance-type"
+    values = [var.foothold_instance_type]
+  }
+  location_type = "availability-zone"
+}
+
 data "aws_subnets" "default" {
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.default.id]
+  }
+  filter {
+    name   = "availability-zone"
+    values = data.aws_ec2_instance_type_offerings.foothold_azs.locations
   }
 }
 
@@ -77,7 +91,7 @@ data "aws_subnets" "default" {
 # -----------------------------------------------------------------------------
 resource "aws_security_group" "foothold" {
   name        = "redteam-foothold-sg"
-  description = "auto-redteam foothold — egress only, no inbound (SSM control plane)."
+  description = "auto-redteam foothold - egress only, no inbound (SSM control plane)."
   vpc_id      = data.aws_vpc.default.id
 
   egress {

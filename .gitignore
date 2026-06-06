@@ -4,6 +4,7 @@ __pycache__/
 .env
 *.tfstate
 *.tfstate.backup
+*.tfplan
 .terraform/
 .terraform.lock.hcl
 .venv/**
