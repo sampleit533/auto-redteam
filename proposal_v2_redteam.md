@@ -178,14 +178,17 @@ Thành phần điều phối kích hoạt, đảm bảo việc kiểm thử di�
 - **`redteam-cloud-deploy.yml`** — workflow *reusable* deploy chuỗi kill-chain lên AWS
   thật qua OIDC; được `redteam-pipeline` gọi lại ở stage Deploy (có **approval gate**).
 - **`redteam-foothold-run.yml`** — chạy một kịch bản (T2/T4) **trên EC2 foothold** qua SSM
-  (mô hình "compromised workload"); có cổng uỷ quyền (actor allowlist + required reviewers
-  + OIDC khoá theo environment).
+  (mô hình "compromised workload"); có cổng uỷ quyền (actor allowlist + approval job
+  issue-based + OIDC khoá theo environment).
 
 Cơ chế kiểm soát: chỉ khi qua **detection gate** (coverage 100% trên LocalStack) và
 **environment gate** (`aws-sandbox`) thì pipeline mới promote lên AWS thật. Cổng uỷ quyền
-chạm-AWS gồm ba lớp: **actor allowlist → required reviewers (environment `aws-sandbox`) →
-OIDC `sub` khoá theo `:environment:aws-sandbox`** (job không có environment ⇒ không lấy
-được credential).
+chạm-AWS gồm ba lớp: **actor allowlist → approval job issue-based (`/approve` từ
+`FOOTHOLD_APPROVERS`) → OIDC `sub` khoá theo `:environment:aws-sandbox`** (job không có
+environment ⇒ không lấy được credential). Lớp 2 dùng một job tự viết (mở issue, chặn chờ
+duyệt) thay cho *Required reviewers* native của GitHub Environment — vì tính năng đó đòi
+plan trả phí nếu repo private; cách này chạy được trên **free plan** và không thêm
+third-party Action.
 
 ### 2.2. Sandbox & Target Environments
 

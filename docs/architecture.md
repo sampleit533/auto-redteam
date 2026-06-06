@@ -277,7 +277,7 @@ flowchart TD
 
     subgraph gate [" Cổng uỷ quyền — ai hợp lệ mới push được "]
         allow[1 · actor allowlist<br/>FOOTHOLD_ALLOWED_ACTORS]
-        rev[2 · Required reviewers<br/>environment aws-sandbox]
+        rev[2 · Approval job issue-based<br/>/approve từ FOOTHOLD_APPROVERS]
         sub[3 · OIDC sub = environment:aws-sandbox<br/>không environment ⇒ không có creds]
         allow --> rev --> sub
     end
@@ -317,7 +317,7 @@ flowchart TD
 | Thành phần kiến trúc | Thư mục / file |
 |---|---|
 | Orchestration (CI/CD) | `.github/workflows/` — `redteam-pipeline.yml`, `redteam-cloud-deploy.yml`, `redteam-foothold-run.yml` |
-| Cổng uỷ quyền | `.github/CODEOWNERS`, OIDC trust `environment:aws-sandbox` (`infra/aws-bootstrap/main.tf`), required reviewers + actor allowlist |
+| Cổng uỷ quyền | `.github/CODEOWNERS`, OIDC trust `environment:aws-sandbox` (`infra/aws-bootstrap/main.tf`), actor allowlist + approval job issue-based (`redteam-foothold-run.yml`, thay cho required reviewers trên free plan) |
 | Scenario-as-Code | `scenarios/T1..T8_*.yaml` |
 | Simulation runners | `runners/simulate.py`, `runners/scenarios/t1..t8_*.py`, `cloudtrail_util.py`, `s3log_util.py`, `nids_lite.py`, `snort_util.py`, `pcap_util.py` |
 | Sandbox targets | `targets/` (docker-compose, ssh-target, pcap-recorder, snort-runner) |

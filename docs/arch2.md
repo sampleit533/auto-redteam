@@ -132,7 +132,7 @@ sequenceDiagram
     autonumber
     actor Op as Actor (allowlisted)
     participant GH as GitHub Actions<br/>(redteam-foothold-run)
-    participant ENV as Environment aws-sandbox<br/>(required reviewers)
+    participant APP as Approval gate<br/>(issue-based, /approve)
     participant STS as AWS STS / IAM
     participant S3C as Code bucket<br/>redteam-foothold-code-*
     participant SSM as AWS SSM
@@ -141,10 +141,10 @@ sequenceDiagram
 
     Op->>GH: workflow_dispatch (scenario + ticket)
     GH->>GH: Preflight — actor allowlist?
-    GH->>ENV: Job yêu cầu environment aws-sandbox
-    ENV-->>GH: Required reviewer duyệt (manual)
+    GH->>APP: Approval job mở issue, chặn chờ duyệt
+    APP-->>GH: Approver (allowlist) comment /approve
     GH->>STS: AssumeRoleWithWebIdentity<br/>(sub = ...:environment:aws-sandbox)
-    Note over STS: Không environment ⇒ sub sai ⇒ TỪ CHỐI
+    Note over STS: Job không khai environment ⇒ sub sai ⇒ TỪ CHỐI
     STS-->>GH: Credential tạm thời (redteam-deploy)
     GH->>S3C: aws s3 sync repo (đẩy code lên)
     GH->>EC2: StartInstances + chờ SSM Online
@@ -159,6 +159,13 @@ sequenceDiagram
     GH->>S3C: tải results.json về làm artifact
     GH-->>Op: report + detection coverage
 ```
+
+> **Lớp 2 (Approval gate)** được hiện thực bằng một *job approval ngay trong workflow*:
+> nó mở một issue và **chặn** cho tới khi một approver trong `FOOTHOLD_APPROVERS`
+> comment `/approve` (hoặc `/deny`). Đây là bản thay thế — chạy được trên **private
+> repo + free plan** — cho tính năng *Required reviewers* của GitHub Environment (tính
+> năng native đó đòi Pro/Team/Enterprise nếu repo private). Không dùng third-party
+> Action nào ⇒ không thêm bề mặt supply-chain (nhất quán với mô hình T5).
 
 > Quyền instance role tái dùng y nguyên từ role deploy (IAM chỉ dưới `/redteam-sandbox/`
 > + boundary `Deny *`, S3 chỉ `redteam-sandbox-*`) ⇒ "chiếm" được EC2 vẫn zero blast

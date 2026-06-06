@@ -7,7 +7,12 @@ name: RedTeam — Foothold Run (scenario ON a real EC2, via SSM)
 #
 # Authorization gate ("only a valid actor may push a scenario to AWS"):
 #   1. actor allowlist preflight  (vars.FOOTHOLD_ALLOWED_ACTORS)
-#   2. GitHub Environment aws-sandbox with Required reviewers (manual approval)
+#   2. manual-approval job: opens a tracking issue and BLOCKS until an approver
+#      from vars.FOOTHOLD_APPROVERS comments /approve (or /deny). This is a
+#      free-plan, private-repo substitute for GitHub Environment "Required
+#      reviewers" (that native feature needs Pro/Team/Enterprise on a private
+#      repo). No third-party Action is used — pure gh API, so it adds no
+#      supply-chain surface (consistent with the T5 threat model).
 #   3. OIDC trust is scoped to repo:...:environment:aws-sandbox (see main.tf),
 #      so a job WITHOUT this environment cannot obtain AWS credentials at all.
 #
@@ -16,6 +21,12 @@ name: RedTeam — Foothold Run (scenario ON a real EC2, via SSM)
 #   FOOTHOLD_INSTANCE_ID   (terraform output foothold_instance_id)
 #   FOOTHOLD_CODE_BUCKET   (terraform output foothold_code_bucket)
 #   FOOTHOLD_ALLOWED_ACTORS (comma-separated GitHub logins; e.g. sampleit533)
+# Optional:
+#   FOOTHOLD_APPROVERS             (comma-separated logins allowed to /approve;
+#                                   defaults to FOOTHOLD_ALLOWED_ACTORS. Set to a
+#                                   DIFFERENT login than the trigger-er for true
+#                                   separation of duty.)
+#   FOOTHOLD_APPROVAL_TIMEOUT_MIN  (minutes to wait for /approve; default 30)
 
 on:
   workflow_dispatch:
@@ -80,13 +91,95 @@ jobs:
           fi
           echo "Actor $ACTOR authorized. Ticket: ${{ inputs.approval_ticket }}. Scenario: ${{ inputs.scenario }}."
 
+  approval:
+    name: Manual approval gate (issue-based; free-plan required-reviewers substitute)
+    runs-on: ubuntu-latest
+    needs: preflight
+    permissions:
+      issues: write
+    steps:
+      - name: Open approval issue and block until an authorized /approve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
+          SCENARIO: ${{ inputs.scenario }}
+          TICKET: ${{ inputs.approval_ticket }}
+          ACTOR: ${{ github.actor }}
+          APPROVERS: ${{ vars.FOOTHOLD_APPROVERS || vars.FOOTHOLD_ALLOWED_ACTORS || 'sampleit533' }}
+          TIMEOUT_MIN: ${{ vars.FOOTHOLD_APPROVAL_TIMEOUT_MIN || '30' }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Foothold run awaiting approval"
+            echo
+            echo "Free-plan substitute for GitHub Environment *required reviewers*."
+            echo
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Scenario | \`$SCENARIO\` |"
+            echo "| Approval ticket | \`$TICKET\` |"
+            echo "| Triggered by | @$ACTOR |"
+            echo "| Run | $RUN_URL |"
+            echo
+            echo "An approver (**$APPROVERS**) must comment \`/approve\` to let the run"
+            echo "proceed, or \`/deny\` to cancel. Auto-cancels after ${TIMEOUT_MIN} min."
+          } > /tmp/approval-body.md
+
+          ISSUE_URL=$(gh issue create --repo "$REPO" \
+            --title "Approve foothold run #$RUN_ID ($SCENARIO)" \
+            --body-file /tmp/approval-body.md)
+          NUM="${ISSUE_URL##*/}"
+          echo "Approval issue #$NUM: $ISSUE_URL"
+          echo "Blocking until /approve from one of: $APPROVERS"
+
+          is_approver() {
+            local who="$1" a
+            IFS=',' read -ra LIST <<< "$APPROVERS"
+            for a in "${LIST[@]}"; do
+              [ "$(echo "$a" | xargs)" = "$who" ] && return 0
+            done
+            return 1
+          }
+
+          DEADLINE=$(( $(date +%s) + TIMEOUT_MIN * 60 ))
+          DECISION=""; APPROVER=""
+          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+            while IFS=$'\t' read -r who body; do
+              is_approver "$who" || continue
+              case "$body" in
+                */approve*) DECISION="approve"; APPROVER="$who"; break ;;
+                */deny*)    DECISION="deny";    APPROVER="$who"; break ;;
+              esac
+            done < <(gh api "repos/$REPO/issues/$NUM/comments" --paginate \
+                       --jq '.[] | [.user.login, (.body|gsub("[\n\r\t]";" "))] | @tsv')
+            [ -n "$DECISION" ] && break
+            sleep 15
+          done
+
+          if [ "$DECISION" = "approve" ]; then
+            gh issue comment "$NUM" --repo "$REPO" --body "Approved by @$APPROVER — run proceeding."
+            gh issue close  "$NUM" --repo "$REPO" >/dev/null 2>&1 || true
+            echo "Approved by $APPROVER."
+          elif [ "$DECISION" = "deny" ]; then
+            gh issue comment "$NUM" --repo "$REPO" --body "Denied by @$APPROVER — run cancelled."
+            gh issue close  "$NUM" --repo "$REPO" >/dev/null 2>&1 || true
+            echo "::error::Denied by $APPROVER."; exit 1
+          else
+            gh issue comment "$NUM" --repo "$REPO" --body "Timed out after ${TIMEOUT_MIN} min with no /approve — run cancelled."
+            gh issue close  "$NUM" --repo "$REPO" >/dev/null 2>&1 || true
+            echo "::error::Approval timed out."; exit 1
+          fi
+
   run:
     name: Run ${{ inputs.scenario }} on the foothold (real AWS via SSM)
     runs-on: ubuntu-latest
-    needs: preflight
-    # Required reviewers on this environment = the manual approval gate. The
-    # OIDC trust is scoped to this environment, so creds are unobtainable
-    # without it (defense in depth with the allowlist above).
+    needs: [preflight, approval]
+    # Manual approval is enforced by the `approval` job above (free-plan
+    # substitute for Environment required reviewers). `environment: aws-sandbox`
+    # is still REQUIRED here: the OIDC trust is scoped to this environment, so a
+    # job without it cannot obtain AWS credentials at all (defense in depth).
     environment: aws-sandbox
     steps:
       - name: Checkout

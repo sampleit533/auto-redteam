@@ -136,11 +136,22 @@ Bootstrap gồm 2 file: `main.tf` (nền OIDC + role + boundary) và
 > Workflow đã có **fallback** trỏ tới ARN của account `406953137587`. Nếu bạn
 > dùng đúng account đó thì có thể bỏ qua bước này; account khác thì phải set.
 
-### 4.2. (Tùy chọn) Cổng phê duyệt thủ công
+### 4.2. Cổng phê duyệt thủ công
 
-**Settings → Environments → New environment → `aws-sandbox`** → bật
-**Required reviewers** (chọn chính bạn). Mỗi lần chạy real-cloud sẽ phải bấm
-approve — rất hợp với câu chuyện DevSecOps "deploy lên prod cần gate".
+> ⚠️ **Giới hạn billing:** tính năng **Required reviewers** (và *wait timer*) của
+> GitHub Environment **không khả dụng cho private repo trên free plan** — chỉ
+> public repo, hoặc plan **Pro/Team/Enterprise**, mới bật được (GitHub trả HTTP
+> 422 *"ensure the billing plan supports..."* nếu cố set qua API).
+
+Vì repo này đang **private + free plan**, cổng phê duyệt thủ công được hiện thực
+bằng **job `approval` ngay trong `redteam-foothold-run.yml`**: job mở một issue và
+**chặn** cho tới khi một approver trong `FOOTHOLD_APPROVERS` comment `/approve`
+(hoặc `/deny`). Không cần thao tác Settings, chạy được trên free plan, và **không
+dùng third-party Action** (không thêm bề mặt supply-chain — nhất quán với T5).
+
+> Nếu sau này bạn **nâng Pro/Team** hoặc để repo **public**, có thể bật thêm
+> Required reviewers native cho environment `aws-sandbox`
+> (Settings → Environments → `aws-sandbox`); gate dạng-job vẫn chạy song song.
 
 ---
 
@@ -169,8 +180,9 @@ push / PR ─► Code (lint + gitleaks) ─► Build & Test (cloud chain trên L
 > **giả** ở mọi thay đổi, rồi mới lên cloud **thật** khi merge — đúng mô hình CI→CD.
 
 > ⚠️ Vì vậy **mỗi lần push vào `main` sẽ kích hoạt deploy lên AWS thật**. Muốn
-> chặn lại bằng tay → bật **Required reviewers** cho environment `aws-sandbox`
-> (mục 4.2); khi đó deploy sẽ đợi bạn bấm *approve*.
+> chặn lại bằng tay thì dùng cổng phê duyệt ở mục 4.2 (trên free+private là **job
+> `approval` issue-based** trong `redteam-foothold-run.yml`; nếu nâng Pro/để public
+> thì bật thêm Required reviewers native cho environment `aws-sandbox`).
 
 ### 5.2. Thủ công — chỉ chạy riêng stage Deploy
 

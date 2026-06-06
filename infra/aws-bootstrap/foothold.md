@@ -61,15 +61,26 @@ The control plane is **SSM Session Manager** — no SSH, no open ports, no key.
    ```
 
    Also set **`FOOTHOLD_ALLOWED_ACTORS`** = comma-separated GitHub logins
-   allowed to launch a run (e.g. `sampleit533`).
+   allowed to launch a run (e.g. `sampleit533`). Optionally set
+   **`FOOTHOLD_APPROVERS`** (logins allowed to `/approve`; defaults to the
+   allowlist — set a *different* login for true separation of duty) and
+   **`FOOTHOLD_APPROVAL_TIMEOUT_MIN`** (default 30).
 
-3. **Authorization gate (do this once):**
-   - Repo → Settings → Environments → **`aws-sandbox`** → add **Required
-     reviewers** (an approver). Every real-cloud run now needs a manual click.
+3. **Authorization gate (no manual setup needed):**
+   - Layer 2 is enforced by the **`approval` job inside `redteam-foothold-run.yml`**:
+     it opens a tracking issue and **blocks** until an approver from
+     `FOOTHOLD_APPROVERS` comments `/approve` (or `/deny`). This is a free-plan,
+     private-repo substitute for GitHub Environment **Required reviewers** (the
+     native feature needs Pro/Team/Enterprise on a private repo, or a public
+     repo). It uses only the `gh` API — **no third-party Action**, so it adds no
+     supply-chain surface.
+   - If you later upgrade to a paid plan (or make the repo public) you *may*
+     additionally enable native Required reviewers on the `aws-sandbox`
+     environment; the job-based gate still works alongside it.
    - Branch protection on `main`: require PR + **review from Code Owners**
      (see `.github/CODEOWNERS`).
 
-   Gate layers, in order: actor allowlist → required-reviewer approval → OIDC
+   Gate layers, in order: actor allowlist → issue-based `/approve` gate → OIDC
    trust scoped to the environment (no environment ⇒ no AWS credentials).
 
 ## Running a scenario
